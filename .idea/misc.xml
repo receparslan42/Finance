@@ -1,0 +1,32 @@
+<project version="4">
+  <component name="EntryPointsManager">
+    <pattern value="com.receparslan.finance.servics.BinanceApiService" method="getHistoricalDataByRange" />
+    <pattern value="com.receparslan.finance.model.CryptocurrencyList" />
+    <pattern value="com.receparslan.finance.model.CryptocurrencyList" method="CryptocurrencyList" />
+    <pattern value="com.receparslan.finance.ExampleUnitTest" method="addition_isCorrect" />
+    <pattern value="com.receparslan.finance.servics.BinanceApiService" />
+    <pattern value="com.receparslan.finance.servics.CryptocurrencyApiService" />
+    <pattern value="com.receparslan.finance.viewmodel.CryptocurrencyViewModel" />
+    <pattern value="com.receparslan.finance.viewmodel.CryptocurrencyViewModel" method="CryptocurrencyViewModel" />
+    <pattern value="com.receparslan.finance.ExampleInstrumentedTest" />
+    <pattern value="com.receparslan.finance.ExampleUnitTest" />
+    <pattern value="com.receparslan.finance.servics.CryptocurrencyApiService" method="getCryptocurrencyByIds" />
+    <pattern value="com.receparslan.finance.servics.CryptocurrencyApiService" method="getCryptocurrencyListByNames" />
+    <pattern value="com.receparslan.finance.servics.CryptocurrencyApiService" method="getCryptocurrencyListByPage" />
+    <pattern value="com.receparslan.finance.servics.CryptocurrencyApiService" method="searchCryptocurrency" />
+    <pattern value="com.receparslan.finance.ExampleInstrumentedTest" method="useAppContext" />
+    <pattern value="com.receparslan.finance.viewmodel.DetailViewModel" method="DetailViewModel" />
+    <pattern value="com.receparslan.finance.viewmodel.FavouritesViewModel" />
+    <pattern value="com.receparslan.finance.viewmodel.FavouritesViewModel" method="FavouritesViewModel" />
+    <pattern value="com.receparslan.finance.viewmodel.DetailViewModel" />
+    <pattern value="com.receparslan.finance.viewmodel.HomeViewModel" />
+    <pattern value="com.receparslan.finance.viewmodel.HomeViewModel" method="HomeViewModel" />
+  </component>
+  <component name="ExternalStorageConfigurationManager" enabled="true" />
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_21" default="true" project-jdk-name="jbr-21" project-jdk-type="JavaSDK">
+    <output url="file://$PROJECT_DIR$/build/classes" />
+  </component>
+  <component name="ProjectType">
+    <option name="id" value="Android" />
+  </component>
+</project>
