@@ -25,17 +25,17 @@ A modern Android app for tracking cryptocurrency markets with Jetpack Compose. I
 
 ## Screenshots
 
-| Home Page                                                | Gainers                                                  | Losers                                                 |
-|----------------------------------------------------------|----------------------------------------------------------|--------------------------------------------------------|
-| <img src="screenshoots/home_screen.jpg" alt="Home Page"> | <img src="screenshoots/gainer_screen.jpg" alt="Gainers"> | <img src="screenshoots/loser_screen.jpg" alt="Losers"> |
+| Home Page                                                            | Gainers                                                              | Losers                                                             |
+|----------------------------------------------------------------------|----------------------------------------------------------------------|--------------------------------------------------------------------|
+| <img src="screenshoots/home_screen.jpg" alt="Home Page" width="250"> | <img src="screenshoots/gainer_screen.jpg" alt="Gainers" width="250"> | <img src="screenshoots/loser_screen.jpg" alt="Losers" width="250"> |
 
-| Search                                                  | Favourites                                                      |
-|---------------------------------------------------------|-----------------------------------------------------------------|
-| <img src="screenshoots/search_screen.jpg" alt="Search"> | <img src="screenshoots/favourites_screen.jpg" alt="Favourites"> |
+| Search                                                              | Favourites                                                                  |
+|---------------------------------------------------------------------|-----------------------------------------------------------------------------|
+| <img src="screenshoots/search_screen.jpg" alt="Search" width="250"> | <img src="screenshoots/favourites_screen.jpg" alt="Favourites" width="250"> |
 
-| Detail                                                    | Detail                                                      | Detail                                                      |
-|-----------------------------------------------------------|-------------------------------------------------------------|-------------------------------------------------------------|
-| <img src="screenshoots/detail_screen.jpg" alt="Detail 1"> | <img src="screenshoots/detail_screen_2.jpg" alt="Detail 2"> | <img src="screenshoots/detail_screen_3.jpg" alt="Detail 3"> |
+| Detail                                                                | Detail                                                                  | Detail                                                                  |
+|-----------------------------------------------------------------------|-------------------------------------------------------------------------|-------------------------------------------------------------------------|
+| <img src="screenshoots/detail_screen.jpg" alt="Detail 1" width="250"> | <img src="screenshoots/detail_screen_2.jpg" alt="Detail 2" width="250"> | <img src="screenshoots/detail_screen_3.jpg" alt="Detail 3" width="250"> |
 
 ## Tech Stack
 - Jetpack Compose, Material 3, Navigation Compose
