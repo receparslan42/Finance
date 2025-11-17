@@ -33,9 +33,9 @@ A modern Android app for tracking cryptocurrency markets with Jetpack Compose. I
 |---------------------------------------------------------|-----------------------------------------------------------------|
 | <img src="screenshoots/search_screen.jpg" alt="Search"> | <img src="screenshoots/favourites_screen.jpg" alt="Favourites"> |
 
-| Detail                                                      | Detail                                                      | Detail                                                      |
-|-------------------------------------------------------------|-------------------------------------------------------------|-------------------------------------------------------------|
-| <img src="screenshoots/detail_screen_1.jpg" alt="Detail 1"> | <img src="screenshoots/detail_screen_2.jpg" alt="Detail 2"> | <img src="screenshoots/detail_screen_3.jpg" alt="Detail 3"> |
+| Detail                                                    | Detail                                                      | Detail                                                      |
+|-----------------------------------------------------------|-------------------------------------------------------------|-------------------------------------------------------------|
+| <img src="screenshoots/detail_screen.jpg" alt="Detail 1"> | <img src="screenshoots/detail_screen_2.jpg" alt="Detail 2"> | <img src="screenshoots/detail_screen_3.jpg" alt="Detail 3"> |
 
 ## Tech Stack
 - Jetpack Compose, Material 3, Navigation Compose
