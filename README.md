@@ -1,4 +1,4 @@
-# Finance (Android • Kotlin • Jetpack Compose • MVVM • APIs)
+# Finance (Cryptocurrency Tracker Android App)
 
 A modern Android app for tracking cryptocurrency markets with Jetpack Compose. It fetches live
 market data, gainers/losers, and historical price series, lets you search coins, and save favourites
