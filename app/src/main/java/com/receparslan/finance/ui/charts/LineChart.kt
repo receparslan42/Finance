@@ -39,7 +39,7 @@ import com.patrykandpatrick.vico.core.common.component.TextComponent
 import com.patrykandpatrick.vico.core.common.data.ExtraStore
 import com.patrykandpatrick.vico.core.common.shader.ShaderProvider
 import com.receparslan.finance.ui.markers.rememberMarker
-import com.receparslan.finance.ui.screens.ExtraKeys
+import com.receparslan.finance.util.Constants.ExtraKeys
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.text.SimpleDateFormat
@@ -98,16 +98,52 @@ val DetailedMarkerFormatter = object : DefaultCartesianMarker.ValueFormatter {
 
         return buildSpannedString {
             color(android.graphics.Color.GRAY) { append("Open: ") }
-            color(color) { append(" $${DecimalFormat("#,###.###", DecimalFormatSymbols(Locale.US)).format(item.open.toDouble())}\n") }
+            color(color) {
+                append(
+                    " $${
+                        DecimalFormat(
+                            "#,###.###",
+                            DecimalFormatSymbols(Locale.US)
+                        ).format(item.open.toDouble())
+                    }\n"
+                )
+            }
 
             color(android.graphics.Color.GRAY) { append("High: ") }
-            color(color) { append(" $${DecimalFormat("#,###.###", DecimalFormatSymbols(Locale.US)).format(item.high.toDouble())}\n") }
+            color(color) {
+                append(
+                    " $${
+                        DecimalFormat(
+                            "#,###.###",
+                            DecimalFormatSymbols(Locale.US)
+                        ).format(item.high.toDouble())
+                    }\n"
+                )
+            }
 
             color(android.graphics.Color.GRAY) { append("Low: ") }
-            color(color) { append(" $${DecimalFormat("#,###.###", DecimalFormatSymbols(Locale.US)).format(item.low.toDouble())}\n") }
+            color(color) {
+                append(
+                    " $${
+                        DecimalFormat(
+                            "#,###.###",
+                            DecimalFormatSymbols(Locale.US)
+                        ).format(item.low.toDouble())
+                    }\n"
+                )
+            }
 
             color(android.graphics.Color.GRAY) { append("Close: ") }
-            color(color) { append(" $${DecimalFormat("#,###.###", DecimalFormatSymbols(Locale.US)).format(item.close.toDouble())}") }
+            color(color) {
+                append(
+                    " $${
+                        DecimalFormat(
+                            "#,###.###",
+                            DecimalFormatSymbols(Locale.US)
+                        ).format(item.close.toDouble())
+                    }"
+                )
+            }
         }
     }
 }
@@ -129,7 +165,10 @@ fun LineChart(
                                 LineCartesianLayer.AreaFill.single(
                                     fill(
                                         ShaderProvider.verticalGradient(
-                                            arrayOf(Color(0xFF0834F4).copy(alpha = 0.4f), Color.Transparent)
+                                            arrayOf(
+                                                Color(0xFF0834F4).copy(alpha = 0.4f),
+                                                Color.Transparent
+                                            )
                                         )
                                     )
                                 ),

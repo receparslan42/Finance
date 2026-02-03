@@ -49,27 +49,28 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
-import com.google.gson.Gson
+import com.receparslan.finance.LoadingScreenHolder
 import com.receparslan.finance.R
-import com.receparslan.finance.ScreenHolder
 import com.receparslan.finance.model.Cryptocurrency
 import com.receparslan.finance.util.reachedEnd
 import com.receparslan.finance.viewmodel.HomeViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.net.URLEncoder
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(viewModel: HomeViewModel, navController: NavController) {
-    val cryptocurrencyList = remember { viewModel.cryptocurrencyList } // List of cryptocurrencies to be displayed in the UI
+fun HomeScreen(navController: NavController) {
+    val viewModel: HomeViewModel = hiltViewModel() // Get the HomeViewModel instance using Hilt
 
-    val isLoading by remember { viewModel.isLoading } // Loading state to show/hide loading indicators
+    val cryptocurrencyList = viewModel.cryptocurrencyList // List of cryptocurrencies to display
 
-    val listState = rememberLazyListState() // State of the LazyColumn for scrolling and item visibility
+    val isLoading by viewModel.isLoading // Loading state to show/hide loading indicators
+
+    val listState = rememberLazyListState() // State for the LazyColumn
 
     // State to manage the refreshing state
     var isRefreshing by rememberSaveable { mutableStateOf(false) }
@@ -84,34 +85,13 @@ fun HomeScreen(viewModel: HomeViewModel, navController: NavController) {
     }
 
     // This LaunchedEffect is triggered when the user reaches the end of the list.
-    LaunchedEffect(reachedEnd) {
-        if (reachedEnd)
-            viewModel.loadMore()
-    }
+    LaunchedEffect(reachedEnd) { if (reachedEnd) viewModel.loadMore() }
 
-    // Header for the screen
-    Text(
-        text = "Trending Coins",
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 20.dp, top = 7.dp),
-        style = TextStyle(
-            shadow = Shadow(
-                color = Color.White,
-                offset = Offset(0f, 2f),
-                blurRadius = 3f
-            ),
-            fontFamily = FontFamily(Font(R.font.poppins)),
-            fontSize = 20.sp,
-            lineHeight = 20.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color.White,
-        )
-    )
+    LeftHeaderText() // Display the header text for the Home Screen
 
     // Show a loading indicator if the cryptocurrency list is empty and data is being loaded
-    if (cryptocurrencyList.isEmpty())
-        ScreenHolder()
+    if (cryptocurrencyList.isEmpty() && isLoading)
+        LoadingScreenHolder()
     else {
         // Pull to refresh functionality for the list
         @Suppress("AssignedValueIsNeverRead") // isRefreshing is not used directly but is required for the PullToRefreshBox
@@ -138,13 +118,11 @@ fun HomeScreen(viewModel: HomeViewModel, navController: NavController) {
                 items(cryptocurrencyList) {
                     CryptocurrencyRow(it, navController) // Display each cryptocurrency in a row
 
-                    // Show a loading indicator at the end of the list if more items are being loaded
-                    if (isLoading && cryptocurrencyList.lastOrNull() == it)
-                        CryptocurrencyPlaceholder()
-
-                    // Show a spacer at the end of the list to show cryptocurrency on the bottom bar
-                    if (cryptocurrencyList.lastOrNull() == it)
-                        Spacer(Modifier.height(100.dp))
+                    // Show a loading placeholder at the end of the list if data is being loaded for pagination
+                    if (cryptocurrencyList.lastOrNull() == it) {
+                        if (isLoading) CryptocurrencyPlaceholder()
+                        Spacer(Modifier.height(100.dp)) // Extra space at the bottom of the list because of bottom navigation bar
+                    }
                 }
             }
         }
@@ -153,16 +131,25 @@ fun HomeScreen(viewModel: HomeViewModel, navController: NavController) {
 
 // This function is used to display each cryptocurrency in a row.
 @Composable
-fun CryptocurrencyRow(cryptocurrency: Cryptocurrency, navController: NavController) {
+fun CryptocurrencyRow(
+    cryptocurrency: Cryptocurrency,
+    navController: NavController,
+    viewModel: HomeViewModel = hiltViewModel()
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 12.dp)
-            .shadow(elevation = 3.dp, spotColor = Color.White, ambientColor = Color.White, shape = RoundedCornerShape(size = 15.dp))
+            .shadow(
+                elevation = 3.dp,
+                spotColor = Color.White,
+                ambientColor = Color.White,
+                shape = RoundedCornerShape(size = 15.dp)
+            )
             .background(color = Color(0xFF211E41), shape = RoundedCornerShape(size = 15.dp))
             .clickable {
                 // URLEncoder is used to encode the cryptocurrency object as a JSON string
-                val encodedString = URLEncoder.encode(Gson().toJson(cryptocurrency), "utf-8")
+                val encodedString = viewModel.encodeToString(cryptocurrency)
 
                 // Navigate to the detail screen with the encoded cryptocurrency object as an argument
                 navController.navigate("detail_screen/$encodedString")
@@ -187,6 +174,7 @@ fun CryptocurrencyRow(cryptocurrency: Cryptocurrency, navController: NavControll
 
             // Display the cryptocurrency name and symbol
             Column {
+                // Display the cryptocurrency name with dynamic font size based on its length
                 Text(
                     text = cryptocurrency.name,
                     style = TextStyle(
@@ -199,8 +187,10 @@ fun CryptocurrencyRow(cryptocurrency: Cryptocurrency, navController: NavControll
                     overflow = TextOverflow.Ellipsis
                 )
 
+                // Small spacer between name and symbol
                 Spacer(Modifier.size(3.dp))
 
+                // Display the cryptocurrency symbol in uppercase
                 Text(
                     text = cryptocurrency.symbol.uppercase(),
                     style = TextStyle(
@@ -215,8 +205,11 @@ fun CryptocurrencyRow(cryptocurrency: Cryptocurrency, navController: NavControll
 
         // Display the cryptocurrency price and price change percentage
         Column {
+            // Display the current price formatted with commas and up to 4 decimal places
             Text(
-                text = "$" + DecimalFormat("#,###.####", DecimalFormatSymbols(Locale.US)).format(cryptocurrency.currentPrice),
+                text = "$" + DecimalFormat("#,###.####", DecimalFormatSymbols(Locale.US)).format(
+                    cryptocurrency.currentPrice
+                ),
                 style = TextStyle(
                     fontSize = 16.sp,
                     color = Color.White,
@@ -228,13 +221,17 @@ fun CryptocurrencyRow(cryptocurrency: Cryptocurrency, navController: NavControll
                     .align(Alignment.End)
             )
 
+            // Small spacer between price and percentage change
             Spacer(Modifier.size(5.dp))
 
+            // Display the price change percentage with color coding for positive/negative changes
             Text(
                 text = cryptocurrency.priceChangePercentage24h.toString() + "%",
                 style = TextStyle(
                     fontSize = 12.sp,
-                    color = if ((cryptocurrency.priceChangePercentage24h) > 0) Color(0xFF21BF73) else Color(0xFFD90429),
+                    color = if ((cryptocurrency.priceChangePercentage24h) > 0) Color(0xFF21BF73) else Color(
+                        0xFFD90429
+                    ),
                     fontWeight = FontWeight.ExtraBold,
                     fontFamily = FontFamily(Font(R.font.poppins)),
                 ),
@@ -246,16 +243,41 @@ fun CryptocurrencyRow(cryptocurrency: Cryptocurrency, navController: NavControll
     }
 }
 
+// This function is used to display the header text for the Home Screen
+@Composable
+private fun LeftHeaderText(
+    modifier: Modifier = Modifier
+) {
+    Text(
+        text = "Trending Coins",
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(start = 20.dp, top = 7.dp),
+        style = TextStyle(
+            shadow = Shadow(
+                color = Color.White,
+                offset = Offset(0f, 2f),
+                blurRadius = 3f
+            ),
+            fontFamily = FontFamily(Font(R.font.poppins)),
+            fontSize = 20.sp,
+            lineHeight = 20.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White,
+        )
+    )
+}
+
 // This function is used to display a loading indicator for each cryptocurrency row while the data is being loaded.
 @Composable
-private fun CryptocurrencyPlaceholder() {
+private fun CryptocurrencyPlaceholder(
+    modifier: Modifier = Modifier
+) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(48.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
-    ) {
-        CircularProgressIndicator()
-    }
+    ) { CircularProgressIndicator() }
 }

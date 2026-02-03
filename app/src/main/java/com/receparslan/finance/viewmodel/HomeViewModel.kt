@@ -1,64 +1,91 @@
 package com.receparslan.finance.viewmodel
 
+import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.gson.Gson
 import com.receparslan.finance.model.Cryptocurrency
-import com.receparslan.finance.service.CryptocurrencyAPI
+import com.receparslan.finance.repository.CryptoRepository
+import com.receparslan.finance.util.Resource
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.net.URLEncoder
+import javax.inject.Inject
 
-class HomeViewModel() : ViewModel() {
+@HiltViewModel
+class HomeViewModel @Inject constructor(
+    private val cryptoRepository: CryptoRepository
+) : ViewModel() {
     // This variable holds the list of cryptocurrencies that will be displayed on the home screen.
     val cryptocurrencyList = mutableStateListOf<Cryptocurrency>()
 
-    var isLoading = mutableStateOf(false) // This variable is used to track the loading state of the cryptocurrency list.
+    // This variable is used to track the loading state of the cryptocurrency list
+    var isLoading = mutableStateOf(false)
 
-    private var page = 1 // This variable is used to keep track of the current page number for pagination.
+    @Inject
+    lateinit var gson: Gson // Gson instance for JSON serialization/deserialization
 
+    // This variable is used to keep track of the current page number for pagination
+    private var page = 1
+
+    // The init block is called when the ViewModel is created.
     init {
-        addCryptocurrenciesByPage(page) // Fetch the initial list of cryptocurrencies
+        initCryptocurrenciesByPage(page) // Fetch the initial list of cryptocurrencies for page 1
+    }
+
+    // This function encodes a Cryptocurrency object to a JSON string using Gson
+    fun encodeToString(cryptocurrency: Cryptocurrency): String {
+        return URLEncoder.encode(gson.toJson(cryptocurrency), "utf-8")
     }
 
     // This function is used to refresh the home screen by clearing the existing list and fetching new data.
     fun refreshHomeScreen() {
         page = 1
         cryptocurrencyList.clear()
-        addCryptocurrenciesByPage(page)
+        initCryptocurrenciesByPage(page)
     }
 
     // This function is used to set the current page number for pagination.
     fun loadMore() {
         if (!isLoading.value) {
             page++
-            addCryptocurrenciesByPage(page)
+            initCryptocurrenciesByPage(page)
         }
     }
 
     // This function fetches the list of cryptocurrencies from the API and updates the cryptocurrencyList variable.
-    private fun addCryptocurrenciesByPage(page: Int) {
-        viewModelScope.launch(Dispatchers.IO) {
-            isLoading.value = true // Set loading state to true
+    private fun initCryptocurrenciesByPage(page: Int) = viewModelScope.launch {
+        isLoading.value = true // Set loading state to true
 
+        // Retry mechanism: Try up to 15 times with a 2-second delay between attempts
+        repeat(15) {
             // Make a network request to fetch the list of cryptocurrencies
-            repeat(15) {
-                try {
-                    val response = CryptocurrencyAPI.retrofitService.getCryptocurrencyListByPage(page)
+            val resource = withContext(Dispatchers.IO) {
+                cryptoRepository.getCryptoListByPage(page)
+            }
 
-                    if (response.isSuccessful) {
-                        response.body()?.let {
-                            cryptocurrencyList.addAll(it.filter { newItem -> newItem !in cryptocurrencyList })
-                        }
-                        return@launch
-                    }
-                } catch (e: Exception) {
-                    println("Exception occurred: ${e.message}")
+            // Handle the response based on its type (Success or Error)
+            when (resource) {
+                // If the response is successful, add the cryptocurrencies to the list and exit the loop
+                is Resource.Success -> {
+                    cryptocurrencyList.addAll(resource.data)
+                    isLoading.value = false // Set loading state to false
+                    return@launch // Exit the repeat loop on success
                 }
 
-                delay(5000) // Wait for 5 seconds before retrying
+                // If there is an error, log the error message and wait for 2 seconds before retrying
+                is Resource.Error -> {
+                    Log.e("HomeViewModel", "Error fetching data: ${resource.message}")
+                    delay(3000)
+                }
             }
-        }.invokeOnCompletion { isLoading.value = false } // Set loading state to false when the loading is completed
+        }
+
+        isLoading.value = false // Set loading state to false when the loading is completed
     }
 }

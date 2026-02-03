@@ -1,17 +1,26 @@
 package com.receparslan.finance.viewmodel
 
-import android.app.Application
+import android.util.Log
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.receparslan.finance.database.CryptocurrencyDatabase
 import com.receparslan.finance.model.Cryptocurrency
-import com.receparslan.finance.service.CryptocurrencyAPI
+import com.receparslan.finance.repository.CryptoRepository
+import com.receparslan.finance.util.Resource
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class FavouritesViewModel(application: Application) : AndroidViewModel(application) {
-    val savedCryptocurrencyList = mutableStateOf<List<Cryptocurrency>>(emptyList())
+@HiltViewModel
+class FavouritesViewModel
+@Inject constructor(
+    private val cryptoRepository: CryptoRepository
+) : ViewModel() {
+
+    // This variable holds the list of saved cryptocurrencies
+    val savedCryptocurrencyList = mutableStateListOf<Cryptocurrency>()
 
     var isLoading = mutableStateOf(false) // Loading state to show/hide loading indicators
 
@@ -20,35 +29,34 @@ class FavouritesViewModel(application: Application) : AndroidViewModel(applicati
         observeSavedCryptocurrencies()
     }
 
-    // This function sets the saved cryptocurrencies by fetching them from the database.
-    private fun observeSavedCryptocurrencies() {
-        viewModelScope.launch(Dispatchers.IO) {
-            isLoading.value = true
+    // This function observes the saved cryptocurrencies from the repository and updates the savedCryptocurrencyList
+    private fun observeSavedCryptocurrencies() = viewModelScope.launch(Dispatchers.IO) {
+        cryptoRepository.getAllSavedCryptoIDsFlow().collect { idsResource ->
+            when (idsResource) {
+                is Resource.Success -> {
+                    // If there are saved IDs, fetch the corresponding cryptocurrency details
+                    if (idsResource.data.isNotEmpty()) {
+                        // Join the list of IDs into a comma-separated string for the API request
+                        val ids = idsResource.data.joinToString(",")
 
-            val cryptocurrencyDao = CryptocurrencyDatabase.getDatabase(getApplication<Application>().applicationContext).cryptocurrencyDao()
-
-            cryptocurrencyDao.getAllCryptocurrencies().collect { localList ->
-                val ids = localList.map { it.id }
-
-                if (ids.isEmpty())
-                    savedCryptocurrencyList.value = emptyList()
-                else
-                    try {
-                        val response = CryptocurrencyAPI.retrofitService
-                            .getCryptocurrencyByIds(ids.joinToString(","))
-
-                        if (response.isSuccessful) {
-                            response.body()?.let {
-                                savedCryptocurrencyList.value = it
+                        when (val savedCryptosResource = cryptoRepository.getCryptoByIDs(ids)) {
+                            is Resource.Success -> {
+                                savedCryptocurrencyList.clear()
+                                savedCryptocurrencyList.addAll(savedCryptosResource.data)
                             }
-                        } else {
-                            println("API response unsuccessful: ${response.code()}")
+
+                            is Resource.Error -> Log.e(
+                                "FavouritesViewModel",
+                                savedCryptosResource.message
+                            )
                         }
-                    } catch (e: Exception) {
-                        println("API exception: ${e.message}")
-                    } finally {
-                        isLoading.value = false // Set loading state to false when the loading is completed
+                    } else {
+                        // If there are no saved IDs, clear the list
+                        savedCryptocurrencyList.clear()
                     }
+                }
+
+                is Resource.Error -> Log.e("FavouritesViewModel", idsResource.message)
             }
         }
     }

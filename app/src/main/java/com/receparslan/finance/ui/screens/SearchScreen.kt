@@ -3,7 +3,6 @@ package com.receparslan.finance.ui.screens
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,11 +24,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
@@ -40,32 +35,75 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.receparslan.finance.EmptyScreenHolder
+import com.receparslan.finance.LoadingScreenHolder
 import com.receparslan.finance.R
 import com.receparslan.finance.viewmodel.SearchViewModel
 
 @Composable
-fun SearchScreen(viewModel: SearchViewModel, navController: NavController) {
-    // This is the search query entered by the user
-    var searchQuery by rememberSaveable { mutableStateOf("") }
-
+fun SearchScreen(
+    navController: NavController,
+    viewModel: SearchViewModel = hiltViewModel()
+) {
     // This is the list of cryptocurrencies that match the search query
-    val cryptocurrencySearchList by remember { viewModel.cryptocurrencySearchList }
+    val cryptocurrencySearchList = viewModel.cryptocurrencySearchList
 
-    // This is the focus manager used to clear the focus from the search field
-    val focusManager = LocalFocusManager.current
+    val query by viewModel.query // This is the current search query
 
     // This is the state that indicates whether the app is currently loading data
-    val isLoading by remember { viewModel.isLoading }
+    val isLoading by viewModel.isLoading
 
-    // Search field for entering the cryptocurrency name
+    // This is the state that indicates whether no results were found
+    val isNotFound by viewModel.isNotFound
+
+    // Search bar at the top of the screen
+    SearchBar()
+
+    // Display different content based on the search results and loading state
+    if (isNotFound)
+        EmptyScreenHolder("No results found for \"$query\"")
+    else if (isLoading)
+        LoadingScreenHolder()
+    else
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(20.dp, 70.dp, 20.dp, 16.dp),
+            contentPadding = PaddingValues(top = 7.dp),
+        ) {
+            items(cryptocurrencySearchList) {
+                CryptocurrencyRow(it, navController)
+
+                // Show a spacer at the end of the list to show cryptocurrency on the bottom bar
+                if (cryptocurrencySearchList.lastOrNull() == it)
+                    Spacer(Modifier.height(100.dp))
+            }
+        }
+}
+
+// Composable function for the search bar
+@Composable
+private fun SearchBar(
+    viewModel: SearchViewModel = hiltViewModel()
+) {
+    // This is the state that holds the current search query
+    var searchQuery by viewModel.query
+
+    // This is used to manage focus on the keyboard
+    val focusManager = LocalFocusManager.current
+
     TextField(
         value = searchQuery,
-        onValueChange = { searchQuery = it },
+        onValueChange = {
+            @Suppress("AssignedValueIsNeverRead") // It is used in the ViewModel
+            searchQuery = it
+        },
         keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Search),
         keyboardActions = KeyboardActions(onSearch = {
             focusManager.clearFocus()
-            viewModel.searchCryptocurrencies(searchQuery)
+            viewModel.searchCryptocurrencies()
         }),
         placeholder = {
             Text(
@@ -82,6 +120,7 @@ fun SearchScreen(viewModel: SearchViewModel, navController: NavController) {
                 imageVector = Icons.Outlined.Clear,
                 contentDescription = "Clear",
                 modifier = Modifier.clickable {
+                    @Suppress("AssignedValueIsNeverRead") // It is used in the ViewModel
                     searchQuery = ""
                 }
             )
@@ -114,44 +153,4 @@ fun SearchScreen(viewModel: SearchViewModel, navController: NavController) {
             unfocusedTextColor = Color(0xFFA7A7A7),
         )
     )
-
-    // Show a placeholder while loading data
-    if (isLoading)
-        CryptocurrencyPlaceholder()
-    else
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(20.dp, 70.dp, 20.dp, 16.dp),
-            contentPadding = PaddingValues(top = 7.dp),
-        ) {
-            items(cryptocurrencySearchList) {
-                CryptocurrencyRow(it, navController)
-
-                // Show a spacer at the end of the list to show cryptocurrency on the bottom bar
-                if (cryptocurrencySearchList.lastOrNull() == it)
-                    Spacer(Modifier.height(100.dp))
-            }
-        }
-}
-
-@Composable
-private fun CryptocurrencyPlaceholder() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(20.dp, 70.dp, 20.dp, 16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "Loading...",
-            style = TextStyle(
-                fontFamily = FontFamily(Font(R.font.poppins)),
-                fontSize = 20.sp,
-                lineHeight = 20.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White,
-            )
-        )
-    }
 }
