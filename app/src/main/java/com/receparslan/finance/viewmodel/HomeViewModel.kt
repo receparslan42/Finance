@@ -81,7 +81,7 @@ class HomeViewModel @Inject constructor(
                 // If there is an error, log the error message and wait for 2 seconds before retrying
                 is Resource.Error -> {
                     Log.e("HomeViewModel", "Error fetching data: ${resource.message}")
-                    delay(3000)
+                    delay(2000)
                 }
             }
         }

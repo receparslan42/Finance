@@ -14,7 +14,7 @@ interface CoinGeckoApiService {
     // Fetch a list of cryptocurrencies with pagination support
     @GET("coins/markets")
     suspend fun getCryptoListByPage(
-        @Header("x_cg_demo_api_key") apiKey: String = BuildConfig.API_KEY,
+        @Header("x-cg-demo-api-key") apiKey: String = BuildConfig.API_KEY,
         @Query("vs_currency") vsCurrency: String = "usd",
         @Query("per_page") perPage: Int = 250,
         @Query("page") page: Int
@@ -23,7 +23,7 @@ interface CoinGeckoApiService {
     // Fetch cryptocurrencies by their names (as a comma-separated string)
     @GET("coins/markets")
     suspend fun getCryptoListByNames(
-        @Header("x_cg_demo_api_key") apiKey: String = BuildConfig.API_KEY,
+        @Header("x-cg-demo-api-key") apiKey: String = BuildConfig.API_KEY,
         @Query("vs_currency") vsCurrency: String = "usd",
         @Query("names") names: String
     ): Response<List<Cryptocurrency>>
@@ -31,7 +31,7 @@ interface CoinGeckoApiService {
     // Fetch cryptocurrencies by their IDs (as a comma-separated string)
     @GET("coins/markets")
     suspend fun getCryptoByIDs(
-        @Header("x_cg_demo_api_key") apiKey: String = BuildConfig.API_KEY,
+        @Header("x-cg-demo-api-key") apiKey: String = BuildConfig.API_KEY,
         @Query("vs_currency") vsCurrency: String = "usd",
         @Query("ids") ids: String
     ): Response<List<Cryptocurrency>>
@@ -39,7 +39,7 @@ interface CoinGeckoApiService {
     // Search for cryptocurrencies based on a query string
     @GET("search")
     suspend fun searchCrypto(
-        @Header("x_cg_demo_api_key") apiKey: String = BuildConfig.API_KEY,
+        @Header("x-cg-demo-api-key") apiKey: String = BuildConfig.API_KEY,
         @Query("query") query: String
     ): Response<CryptocurrencyList>
 }
