@@ -19,12 +19,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import com.receparslan.finance.CenterHeaderText
-import com.receparslan.finance.EmptyScreenHolder
-import com.receparslan.finance.GridItem
-import com.receparslan.finance.LoadingScreenHolder
 import com.receparslan.finance.R
+import com.receparslan.finance.ui.components.CenterHeaderText
+import com.receparslan.finance.ui.components.ErrorDialog
+import com.receparslan.finance.ui.components.GridItem
+import com.receparslan.finance.ui.components.ScreenHolder
 import com.receparslan.finance.viewmodel.FavouritesViewModel
 
 @Composable
@@ -32,21 +33,18 @@ fun FavouritesScreen(
     navController: NavController,
     viewModel: FavouritesViewModel = hiltViewModel()
 ) {
-    // This is the list of saved cryptocurrencies from the ViewModel
-    val savedCryptocurrencies = viewModel.savedCryptocurrencyList
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // This is the state that indicates whether the app is currently loading data
-    val isLoading by viewModel.isLoading
+    CenterHeaderText("Favourites")
 
-    CenterHeaderText("Favourites") // Header text at the top of the screen
+    if (uiState.isLoading) {
+        ScreenHolder()
+        return
+    }
 
-    // This is the loading indicator that is displayed when the app is loading data
-    if (savedCryptocurrencies.isEmpty())
-        EmptyScreenHolder(text = " No favourites added yet.")
-    else if (isLoading)
-        LoadingScreenHolder()
-    else {
-        // This is the grid that displays the saved cryptocurrencies
+    if (uiState.savedCryptocurrencies.isEmpty())
+        ScreenHolder(message = " No favourites added yet.")
+    else
         LazyVerticalGrid(
             modifier = Modifier
                 .fillMaxSize()
@@ -56,30 +54,39 @@ fun FavouritesScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             columns = GridCells.Fixed(2),
         ) {
-            items(savedCryptocurrencies) { cryptocurrency ->
+            items(uiState.savedCryptocurrencies) { cryptocurrency ->
                 GridItem(cryptocurrency, navController) {
-                    // Determine the icon based on price change percentage
-                    val icon =
-                        if (cryptocurrency.priceChangePercentage24h < 0) R.drawable.down_icon else R.drawable.up_icon
+                    val icon = if (cryptocurrency.priceChangePercentage24h < 0)
+                        R.drawable.down_icon
+                    else
+                        R.drawable.up_icon
 
-                    // Determine the color based on price change percentage
-                    val color =
-                        if (cryptocurrency.priceChangePercentage24h < 0) Color.Red else Color.Green
+                    val color = if (cryptocurrency.priceChangePercentage24h < 0)
+                        Color.Red
+                    else Color.Green
 
-                    // Display the price change icon with appropriate size and tint
                     Icon(
                         modifier = Modifier.size(28.dp),
                         imageVector = ImageVector.vectorResource(icon),
                         contentDescription = "Price Change",
                         tint = color
                     )
-
                 }
+            }
 
-                // Add extra space at the bottom of the list
-                if (savedCryptocurrencies.indexOf(cryptocurrency) >= savedCryptocurrencies.size - 1)
-                    Spacer(Modifier.height(300.dp))
+            // If the number of saved cryptocurrencies is odd, add extra space at the end to prevent the last item from being cut off by the bottom navigation bar.
+            item {
+                if (uiState.savedCryptocurrencies.size % 2 != 0)
+                    Spacer(Modifier.height(272.dp))
+                else
+                    Spacer(Modifier.height(100.dp))
             }
         }
-    }
+
+    if (uiState.errorMessage.isNotEmpty())
+        ErrorDialog(
+            message = uiState.errorMessage,
+            onDismiss = { viewModel.clearErrorMessage() },
+            onRetry = { viewModel.refreshFavouritesScreen() }
+        )
 }

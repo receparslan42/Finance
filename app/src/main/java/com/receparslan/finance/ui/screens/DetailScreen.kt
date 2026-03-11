@@ -24,8 +24,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -37,9 +37,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,147 +57,125 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
-import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
-import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
-import com.receparslan.finance.LoadingScreenHolder
+import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
+import com.patrykandpatrick.vico.compose.cartesian.data.lineSeries
 import com.receparslan.finance.R
 import com.receparslan.finance.model.Cryptocurrency
 import com.receparslan.finance.ui.charts.LineChart
-import com.receparslan.finance.util.Constants.ExtraKeys
+import com.receparslan.finance.ui.components.ErrorDialog
+import com.receparslan.finance.ui.components.ScreenHolder
+import com.receparslan.finance.util.Constants
+import com.receparslan.finance.util.States.DetailUIState
 import com.receparslan.finance.viewmodel.DetailViewModel
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.distinctUntilChanged
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.absoluteValue
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailScreen(
-    cryptocurrencyParam: Cryptocurrency,
     navController: NavController,
     viewModel: DetailViewModel = hiltViewModel()
 ) {
-    // This is the state that holds the selected cryptocurrency details
-    val cryptocurrency by viewModel.cryptocurrency
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // Set the cryptocurrency state to the passed parameter for the first time
-    if (cryptocurrency.id.isEmpty()) viewModel.cryptocurrency.value = cryptocurrencyParam
-
-    // This is the state that holds the list of historical data for the cryptocurrency
-    val historyList = viewModel.klineDataHistoryList
-
-    // This is the state that holds the model producer for the chart
     val modelProducer = remember { CartesianChartModelProducer() }
 
-    // State to manage the refreshing state
-    var isRefreshing by rememberSaveable { mutableStateOf(false) }
-    val refreshState = rememberPullToRefreshState()
-    val coroutineScope = rememberCoroutineScope()
+    LaunchedEffect(Unit) {
+        snapshotFlow { uiState.klineDataHistory }
+            .distinctUntilChanged()
+            .collect { data ->
+                val x = data.map { it.openTime }
+                val y = data.map { it.close.toDouble() }
+                val map = data.associateBy { it.openTime }
 
-    val isLoading by viewModel.isLoading // Loading state to show/hide loading indicators
-
-    // Fetch the cryptocurrency history when the composable is first launched
-    LaunchedEffect(cryptocurrency) { viewModel.setCryptocurrencyHistory() }
-
-    // Update the chart model producer whenever the history list changes
-    LaunchedEffect(historyList.size) {
-        if (historyList.isNotEmpty()) {
-            val historySnapshot = historyList.toList() // Defensive copy
-
-            withContext(Dispatchers.Main.immediate) {
                 modelProducer.runTransaction {
-                    lineSeries {
-                        series(
-                            historySnapshot.map { it.openTime },
-                            historySnapshot.map { it.close.toFloat() }
-                        )
-                    }
+                    if (data.isNotEmpty()) {
+                        lineSeries { series(x, y) }
 
-                    // Store the history data in the extras of the model producer
-                    extras {
-                        it[ExtraKeys.klineDataMap] =
-                            historySnapshot.associateBy { klineData -> klineData.openTime }
+                        extras { it[Constants.ExtraKeys.klineDataMap] = map }
                     }
                 }
             }
-        }
     }
 
-    @Suppress("AssignedValueIsNeverRead") // isRefreshing is not used directly but is required for the PullToRefreshBox
-    // Check if the data is loaded
-    if (isLoading)
-        LoadingScreenHolder()
-    else {
-        // Pull to refresh functionality
-        @Suppress("AssignedValueIsNeverRead") // isRefreshing is not used directly but is required for the PullToRefreshBox
-        PullToRefreshBox(
-            state = refreshState,
-            isRefreshing = isRefreshing,
-            onRefresh = {
-                isRefreshing = true
-                coroutineScope.launch {
-                    viewModel.refreshDetailScreen()
-                    delay(1500)
-                    isRefreshing = false
-                }
-            }
-        ) {
-            // Scaffold used for the top app bar
+    PullToRefreshBox(
+        state = rememberPullToRefreshState(),
+        isRefreshing = uiState.isRefreshing,
+        onRefresh = { viewModel.refreshDetailScreen() },
+        modifier = Modifier.fillMaxSize()
+    ) {
+        if (uiState.isLoading) {
+            ScreenHolder()
+            return@PullToRefreshBox
+        }
+
+        if (uiState.cryptocurrency != null)
             Scaffold(
-                modifier = Modifier.fillMaxSize(),
-                topBar = { AppBar(cryptocurrency, navController) }
+                topBar = {
+                    AppBar(
+                        state = uiState,
+                        navController = navController,
+                        viewModel = viewModel
+                    )
+                }
             ) { innerPadding ->
-                // LazyColumn used for the pushing of the content
                 LazyColumn {
                     item {
                         Column(
                             modifier = Modifier.padding(innerPadding)
                         ) {
-                            // Display the cryptocurrency price, price change,change percentage, and last updated time
-                            CryptocurrencyInfoRow(cryptocurrency)
+                            CryptocurrencyInfoRow(
+                                cryptocurrency = uiState.cryptocurrency ?: return@Column,
+                                viewModel = viewModel
+                            )
 
-                            // Display the line chart for the cryptocurrency historical data
                             LineChart(
-                                modelProducer,
-                                Modifier
+                                modelProducer = modelProducer,
+                                modifier = Modifier
                                     .fillMaxWidth(),
-                                Brush.horizontalGradient(
-                                    listOf(
-                                        Color(0xFF002FFE),
-                                        Color(0xFF0834F4)
+                                lineColor = Brush.horizontalGradient(
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.onBackground,
+                                        MaterialTheme.colorScheme.secondary
                                     )
                                 ),
                             )
 
-                            // Display the time buttons for selecting the historical data
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(21.dp)
                             ) {
-                                TimeButton("24H", Modifier.weight(1f), viewModel)
-                                TimeButton("1W", Modifier.weight(1f), viewModel)
-                                TimeButton("1M", Modifier.weight(1f), viewModel)
-                                TimeButton("6M", Modifier.weight(1f), viewModel)
-                                TimeButton("1Y", Modifier.weight(1f), viewModel)
-                                TimeButton("5Y", Modifier.weight(1f), viewModel)
+                                TimeButton("24H", Modifier.weight(1f), viewModel, uiState)
+                                TimeButton("1W", Modifier.weight(1f), viewModel, uiState)
+                                TimeButton("1M", Modifier.weight(1f), viewModel, uiState)
+                                TimeButton("6M", Modifier.weight(1f), viewModel, uiState)
+                                TimeButton("1Y", Modifier.weight(1f), viewModel, uiState)
+                                TimeButton("5Y", Modifier.weight(1f), viewModel, uiState)
                             }
 
-                            // Display the cryptocurrency calculation row for user input
-                            CryptocurrencyCalculationRow(cryptocurrency)
+                            CryptocurrencyCalculationRow(
+                                cryptocurrency = uiState.cryptocurrency ?: return@Column,
+                                viewModel = viewModel
+                            )
                         }
                     }
                 }
             }
-        }
+
+        if (uiState.errorMessage.isNotEmpty())
+            ErrorDialog(
+                message = uiState.errorMessage,
+                onDismiss = { viewModel.clearErrorMessage() },
+                onRetry = { viewModel.refreshDetailScreen() }
+            )
     }
 }
 
@@ -207,15 +184,19 @@ fun DetailScreen(
 private fun TimeButton(
     time: String,
     modifier: Modifier,
-    viewModel: DetailViewModel
+    viewModel: DetailViewModel,
+    state: DetailUIState
 ) {
+    val isSelected = time == state.timePeriod
+
     Button(
-        onClick = {
-            viewModel.selectedTimePeriod.value = time
-            viewModel.setCryptocurrencyHistory() // Update the historical data based on the selected time period
-        },
+        enabled = !isSelected,
+        onClick = { viewModel.updateTimePeriod(time) },
         shape = RoundedCornerShape(20.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF211E41)),
+        colors = ButtonDefaults.buttonColors(
+            disabledContainerColor = MaterialTheme.colorScheme.secondary,
+            containerColor = MaterialTheme.colorScheme.background
+        ),
         contentPadding = PaddingValues(0.dp),
         modifier = modifier
             .border(width = 0.5.dp, color = Color.Gray, shape = RoundedCornerShape(size = 20.dp))
@@ -234,17 +215,12 @@ private fun TimeButton(
 // This function creates the app bar for the DetailScreen
 @Composable
 private fun AppBar(
-    cryptocurrency: Cryptocurrency,
+    state: DetailUIState,
     navController: NavController,
-    viewModel: DetailViewModel = hiltViewModel()
+    viewModel: DetailViewModel
 ) {
-    // Get the list of saved cryptocurrency IDs from the ViewModel
-    val savedCryptocurrencyIds = viewModel.savedCryptocurrencyIds
+    if (state.cryptocurrency == null) return
 
-    // Determine if the cryptocurrency is saved
-    val isSaved = cryptocurrency.id in savedCryptocurrencyIds
-
-    // App bar layout with back button, logo, name, symbol, and save icon
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -260,22 +236,21 @@ private fun AppBar(
                 .padding(start = 18.dp)
                 .size(28.dp)
                 .clickable {
-                    navController.popBackStack() // Navigate back to the previous screen
+                    navController.popBackStack()
                 },
             tint = Color.White
         )
 
         // Display the cryptocurrency logo
         Image(
-            painter = rememberAsyncImagePainter(cryptocurrency.image),
-            contentDescription = cryptocurrency.name,
+            painter = rememberAsyncImagePainter(state.cryptocurrency.image),
+            contentDescription = state.cryptocurrency.name,
             modifier = Modifier
                 .padding(start = 8.dp)
                 .size(48.dp)
                 .clip(CircleShape)
         )
 
-        // Row for the name, symbol, and save icon
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
@@ -290,8 +265,8 @@ private fun AppBar(
                     .padding(end = 8.dp)
             ) {
                 Text(
-                    text = cryptocurrency.name,
-                    modifier = if (cryptocurrency.name.length > 10) Modifier.weight(1f) else Modifier,
+                    text = state.cryptocurrency.name,
+                    modifier = if (state.cryptocurrency.name.length > 10) Modifier.weight(1f) else Modifier,
                     fontSize = 24.sp,
                     fontFamily = FontFamily(Font(R.font.poppins)),
                     fontWeight = FontWeight(450),
@@ -300,27 +275,25 @@ private fun AppBar(
                 )
 
                 Text(
-                    text = "(${cryptocurrency.symbol.uppercase()})",
+                    text = "(${state.cryptocurrency.symbol.uppercase()})",
                     modifier = Modifier
                         .padding(start = 4.dp),
                     fontSize = 16.sp,
                     fontFamily = FontFamily(Font(R.font.poppins)),
                     fontWeight = FontWeight(450),
-                    color = Color(0xFFA7A7A7),
+                    color = MaterialTheme.colorScheme.tertiary,
                     maxLines = 1,
                 )
             }
 
-            // Display the icon for saving the cryptocurrency
+            // Display the save icon, which changes based on whether the cryptocurrency is saved or not
             Icon(
-                // Change icon based on whether the cryptocurrency is saved
-                imageVector = ImageVector.vectorResource(id = if (isSaved) R.drawable.star_filled_icon else R.drawable.star_icon),
+                imageVector = ImageVector.vectorResource(id = if (state.isSaved) R.drawable.star_filled_icon else R.drawable.star_icon),
                 contentDescription = "Add to favorites",
                 modifier = Modifier
                     .size(32.dp)
                     .clickable {
-                        // Toggle the saved state of the cryptocurrency
-                        if (isSaved) viewModel.deleteCryptocurrency() else viewModel.saveCryptocurrency()
+                        if (state.isSaved) viewModel.deleteCryptocurrency() else viewModel.saveCryptocurrency()
                     },
                 tint = Color.White
             )
@@ -333,22 +306,22 @@ private fun AppBar(
 private fun CryptocurrencyInfoRow(
     cryptocurrency: Cryptocurrency,
     modifier: Modifier = Modifier,
-    viewModel: DetailViewModel = hiltViewModel()
+    viewModel: DetailViewModel
 ) {
-    // Calculate the previous price and price change
     val prevPrice =
         cryptocurrency.currentPrice / (1 + (cryptocurrency.priceChangePercentage24h / 100))
     val priceChange = cryptocurrency.currentPrice - prevPrice
 
-    // Format the current price
-    val currentPriceFormatted =
-        "$${viewModel.decimalFormatter("#,###.################", cryptocurrency.currentPrice)}"
+    val currentPriceFormatted = "$${
+        viewModel.decimalFormatter(
+            "#,###.################",
+            cryptocurrency.currentPrice
+        )
+    }"
 
-    // Format the price change
     val priceChangeFormatted = (if (priceChange >= 0) "+" else "-") +
             viewModel.decimalFormatter("#,###.###", priceChange.absoluteValue)
 
-    // Format the price change percentage
     val priceChangePercentageFormatted = ("( " + if (priceChange > 0) "+" else "-") + "${
         viewModel.decimalFormatter(
             "#,###.###",
@@ -356,7 +329,6 @@ private fun CryptocurrencyInfoRow(
         )
     }% )"
 
-    // Format the last updated time
     val lastUpdatedTimeFormatted =
         DateTimeFormatter.ofPattern("dd.MM.yyyy\n      HH:mm", Locale.getDefault())
             .format(
@@ -364,17 +336,14 @@ private fun CryptocurrencyInfoRow(
                     .withZoneSameInstant(ZoneId.systemDefault())
             )
 
-    // Determine the color for the price change
     val priceChangeColor = if (priceChange > 0) Color.Green else Color.Red
 
-    // Display the cryptocurrency price, change percentage, and last updated time
     Row(
         modifier = modifier
             .fillMaxWidth()
             .padding(16.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // Display the cryptocurrency price and change percentage
         Column {
             // Display the current price
             Text(
@@ -422,24 +391,22 @@ private fun CryptocurrencyInfoRow(
 private fun CryptocurrencyCalculationRow(
     cryptocurrency: Cryptocurrency,
     modifier: Modifier = Modifier,
-    viewModel: DetailViewModel = hiltViewModel()
+    viewModel: DetailViewModel
 ) {
-    var amount by remember { mutableDoubleStateOf(0.0) } // State to hold the input amount
+    var amount by remember { mutableDoubleStateOf(0.0) }
 
-    // Calculate the previous price and price change
     val prevPrice =
         cryptocurrency.currentPrice / (1 + (cryptocurrency.priceChangePercentage24h / 100))
+
     val priceChange = cryptocurrency.currentPrice - prevPrice
 
-    // Calculate the total value based on the input amount
-    val totalValue by remember {
+    val totalValue by remember(amount, cryptocurrency.currentPrice) {
         derivedStateOf {
             "$${viewModel.decimalFormatter("#,###.#####", cryptocurrency.currentPrice * amount)}"
         }
     }
 
-    // Calculate the total price change based on the input amount
-    val totalPriceChange by remember {
+    val totalPriceChange by remember(amount, priceChange) {
         derivedStateOf {
             (if (priceChange * amount > 0) "+" else if (priceChange * amount < 0) "-" else "") +
                     viewModel.decimalFormatter("#,###.###", priceChange.absoluteValue * amount)
@@ -450,7 +417,7 @@ private fun CryptocurrencyCalculationRow(
         modifier = modifier
             .padding(16.dp)
             .background(
-                color = Color(0xFF211E41),
+                color = MaterialTheme.colorScheme.primary,
                 shape = RoundedCornerShape(size = 15.dp)
             ),
         verticalAlignment = Alignment.CenterVertically,
@@ -474,7 +441,6 @@ private fun CryptocurrencyCalculationRow(
         ) {
             // Column for the name and row for amount input and symbol
             Column {
-                // Display the cryptocurrency name
                 Text(
                     text = cryptocurrency.name,
                     fontSize = 20.sp,
@@ -483,9 +449,9 @@ private fun CryptocurrencyCalculationRow(
                     color = Color.White
                 )
 
-                // Row for amount input and cryptocurrency symbol
                 Row(
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     // Input field for the amount
                     AmountTextField(onAmountChange = { amount = it })
@@ -496,7 +462,7 @@ private fun CryptocurrencyCalculationRow(
                         fontSize = 16.sp,
                         fontFamily = FontFamily(Font(R.font.poppins)),
                         fontWeight = FontWeight(450),
-                        color = Color(0xFFA7A7A7),
+                        color = MaterialTheme.colorScheme.tertiary,
                         maxLines = 1,
                     )
                 }
@@ -529,13 +495,13 @@ private fun CryptocurrencyCalculationRow(
     }
 }
 
+// This function creates a text field for the user to input the amount of cryptocurrency they want to calculate with
 @Composable
 private fun AmountTextField(
     onAmountChange: (Double) -> Unit
 ) {
-    var input by remember { mutableStateOf("") } // This is the state that holds the text input by the user
+    var input by remember { mutableStateOf("") }
 
-    // This is the state that holds the focus manager for the keyboard
     val focusManager = LocalFocusManager.current
 
     BasicTextField(
@@ -547,9 +513,8 @@ private fun AmountTextField(
             color = Color.Gray
         ),
         onValueChange = { newValue ->
-            input = newValue // Update the input state
+            input = newValue
 
-            // Update the amount state based on the user input
             val parsed = input.toDoubleOrNull() ?: 0.0
             onAmountChange(parsed)
         },
@@ -567,12 +532,12 @@ private fun AmountTextField(
                 RoundedCornerShape(15.dp)
             )
             .background(
-                Color(0xFF1D1B32),
+                color = MaterialTheme.colorScheme.background,
                 shape = RoundedCornerShape(15.dp)
             )
             .windowInsetsPadding(
                 WindowInsets(
-                    4.dp,
+                    8.dp,
                     4.dp,
                     4.dp,
                     4.dp

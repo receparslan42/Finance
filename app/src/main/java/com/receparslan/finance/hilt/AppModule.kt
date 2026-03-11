@@ -1,6 +1,7 @@
 package com.receparslan.finance.hilt
 
 import android.content.Context
+import androidx.room.Room
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.receparslan.finance.database.CryptocurrencyDao
@@ -17,7 +18,6 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
@@ -31,7 +31,11 @@ object AppModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): CryptocurrencyDatabase =
-        CryptocurrencyDatabase.getDatabase(context)
+        Room.databaseBuilder(
+            context,
+            CryptocurrencyDatabase::class.java,
+            name = "cryptocurrency_database"
+        ).build()
 
     // Provide CryptocurrencyDao instance for database operations
     @Provides
@@ -46,9 +50,6 @@ object AppModule {
         OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
-            .addInterceptor(HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.HEADERS
-            })
             .build()
 
     // Provide Retrofit instance for CoinGecko API

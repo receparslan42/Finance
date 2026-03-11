@@ -1,53 +1,51 @@
 package com.receparslan.finance.ui.markers
 
-import android.text.Layout
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.unit.TextUnitType
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisGuidelineComponent
+import com.patrykandpatrick.vico.compose.cartesian.marker.CartesianMarker
+import com.patrykandpatrick.vico.compose.cartesian.marker.DefaultCartesianMarker
 import com.patrykandpatrick.vico.compose.cartesian.marker.rememberDefaultCartesianMarker
-import com.patrykandpatrick.vico.compose.common.component.fixed
+import com.patrykandpatrick.vico.compose.common.Fill
+import com.patrykandpatrick.vico.compose.common.Insets
+import com.patrykandpatrick.vico.compose.common.LayeredComponent
+import com.patrykandpatrick.vico.compose.common.MarkerCornerBasedShape
+import com.patrykandpatrick.vico.compose.common.component.ShapeComponent
+import com.patrykandpatrick.vico.compose.common.component.TextComponent
 import com.patrykandpatrick.vico.compose.common.component.rememberShapeComponent
 import com.patrykandpatrick.vico.compose.common.component.rememberTextComponent
-import com.patrykandpatrick.vico.compose.common.fill
-import com.patrykandpatrick.vico.compose.common.insets
-import com.patrykandpatrick.vico.compose.common.shape.markerCorneredShape
-import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarker
-import com.patrykandpatrick.vico.core.cartesian.marker.DefaultCartesianMarker
-import com.patrykandpatrick.vico.core.common.LayeredComponent
-import com.patrykandpatrick.vico.core.common.component.ShapeComponent
-import com.patrykandpatrick.vico.core.common.component.TextComponent
-import com.patrykandpatrick.vico.core.common.shape.CorneredShape
 
 @Composable
 internal fun rememberMarker(
-    valueFormatter: DefaultCartesianMarker.ValueFormatter =
-        DefaultCartesianMarker.ValueFormatter.default(),
+    valueFormatter: DefaultCartesianMarker.ValueFormatter = DefaultCartesianMarker.ValueFormatter.default(),
     showIndicator: Boolean = true,
 ): CartesianMarker {
-    val labelBackgroundShape = markerCorneredShape(CorneredShape.Corner.Rounded)
     val labelBackground =
         rememberShapeComponent(
-            fill = fill(MaterialTheme.colorScheme.background),
-            shape = labelBackgroundShape,
+            fill = Fill(MaterialTheme.colorScheme.background),
+            shape = MarkerCornerBasedShape(RoundedCornerShape(50.dp), 10.dp),
             strokeThickness = 1.dp,
-            strokeFill = fill(MaterialTheme.colorScheme.outline),
+            strokeFill = Fill(MaterialTheme.colorScheme.outline),
         )
     val label =
         rememberTextComponent(
-            color = Color.Gray,
-            textAlignment = Layout.Alignment.ALIGN_NORMAL,
-            padding = insets(24.dp, 4.dp),
+            style = TextStyle.Default.copy(
+                textAlign = TextAlign.Start
+            ),
+            padding = Insets(24.dp, 4.dp),
             background = labelBackground,
             minWidth = TextComponent.MinWidth.fixed(40.dp),
-            lineHeight = TextUnit(25f, TextUnitType.Sp),
             lineCount = 4
         )
     val indicatorFrontComponent =
-        rememberShapeComponent(fill(MaterialTheme.colorScheme.surface), CorneredShape.Pill)
+        rememberShapeComponent(
+            Fill(MaterialTheme.colorScheme.surface),
+            MarkerCornerBasedShape(RoundedCornerShape(percent = 50))
+        )
     val guideline = rememberAxisGuidelineComponent()
     return rememberDefaultCartesianMarker(
         label = label,
@@ -56,14 +54,20 @@ internal fun rememberMarker(
             if (showIndicator) {
                 { color ->
                     LayeredComponent(
-                        back = ShapeComponent(fill(color.copy(alpha = 0.15f)), CorneredShape.Pill),
+                        back = ShapeComponent(
+                            Fill(color.copy(alpha = 0.15f)),
+                            MarkerCornerBasedShape(RoundedCornerShape(percent = 50))
+                        ),
                         front =
                             LayeredComponent(
-                                back = ShapeComponent(fill = fill(color), shape = CorneredShape.Pill),
+                                back = ShapeComponent(
+                                    fill = Fill(color),
+                                    shape = MarkerCornerBasedShape(RoundedCornerShape(percent = 50))
+                                ),
                                 front = indicatorFrontComponent,
-                                padding = insets(5.dp),
+                                padding = Insets(5.dp),
                             ),
-                        padding = insets(10.dp),
+                        padding = Insets(10.dp),
                     )
                 }
             } else {

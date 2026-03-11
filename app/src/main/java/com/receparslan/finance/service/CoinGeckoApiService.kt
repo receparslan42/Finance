@@ -3,7 +3,6 @@ package com.receparslan.finance.service
 import com.receparslan.finance.BuildConfig
 import com.receparslan.finance.model.Cryptocurrency
 import com.receparslan.finance.model.CryptocurrencyList
-import com.receparslan.finance.model.KlineData
 import retrofit2.Response
 import retrofit2.http.GET
 import retrofit2.http.Header
@@ -42,16 +41,4 @@ interface CoinGeckoApiService {
         @Header("x-cg-demo-api-key") apiKey: String = BuildConfig.API_KEY,
         @Query("query") query: String
     ): Response<CryptocurrencyList>
-}
-
-// This interface defines the API endpoints for fetching historical data from Binance
-interface BinanceApiService {
-    @GET("klines")
-    suspend fun getHistoricalDataByRange(
-        @Query("limit") limit: Int = 1000,
-        @Query("symbol") symbol: String,
-        @Query("startTime") startTime: Long,
-        @Query("endTime") endTime: Long,
-        @Query("interval") interval: String
-    ): List<KlineData>
 }

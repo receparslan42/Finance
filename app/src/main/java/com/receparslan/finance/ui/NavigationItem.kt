@@ -8,7 +8,9 @@ sealed class Screen(val rout: String) {
     object Loser : Screen("loser_screen")
     object Favourites : Screen("favourites_screen")
     object Search : Screen("search_screen")
-    object Detail : Screen("detail_screen")
+    object Detail : Screen("detail_screen") {
+        fun createRoute(cryptoId: String) = "detail_screen/$cryptoId"
+    }
 }
 
 data class NavigationItem(

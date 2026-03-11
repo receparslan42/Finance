@@ -24,7 +24,6 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
@@ -36,10 +35,13 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import com.receparslan.finance.EmptyScreenHolder
-import com.receparslan.finance.LoadingScreenHolder
 import com.receparslan.finance.R
+import com.receparslan.finance.ui.components.CryptocurrencyRow
+import com.receparslan.finance.ui.components.ErrorDialog
+import com.receparslan.finance.ui.components.ScreenHolder
+import com.receparslan.finance.util.States.SearchUIState
 import com.receparslan.finance.viewmodel.SearchViewModel
 
 @Composable
@@ -47,25 +49,25 @@ fun SearchScreen(
     navController: NavController,
     viewModel: SearchViewModel = hiltViewModel()
 ) {
-    // This is the list of cryptocurrencies that match the search query
-    val cryptocurrencySearchList = viewModel.cryptocurrencySearchList
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    val query by viewModel.query // This is the current search query
+    // This is the search bar at the top of the screen where users can type their search queries.
+    SearchBar(
+        viewModel = viewModel,
+        state = uiState
+    )
 
-    // This is the state that indicates whether the app is currently loading data
-    val isLoading by viewModel.isLoading
+    if (uiState.isLoading) {
+        ScreenHolder()
+        return
+    }
 
-    // This is the state that indicates whether no results were found
-    val isNotFound by viewModel.isNotFound
-
-    // Search bar at the top of the screen
-    SearchBar()
-
-    // Display different content based on the search results and loading state
-    if (isNotFound)
-        EmptyScreenHolder("No results found for \"$query\"")
-    else if (isLoading)
-        LoadingScreenHolder()
+    if (uiState.query.isEmpty() && uiState.searchResults.isEmpty())
+        ScreenHolder(message = "Type something to search for a cryptocurrency")
+    else if (uiState.isNotFound && uiState.searchResults.isEmpty())
+        ScreenHolder(message = "No results found for \"${uiState.query}\"")
+    else if (uiState.searchResults.isEmpty())
+        ScreenHolder(message = "Please press the search button to see results")
     else
         LazyColumn(
             modifier = Modifier
@@ -73,33 +75,38 @@ fun SearchScreen(
                 .padding(20.dp, 70.dp, 20.dp, 16.dp),
             contentPadding = PaddingValues(top = 7.dp),
         ) {
-            items(cryptocurrencySearchList) {
-                CryptocurrencyRow(it, navController)
+            items(uiState.searchResults) {
+                CryptocurrencyRow(
+                    cryptocurrency = it,
+                    navController = navController
+                )
+            }
 
-                // Show a spacer at the end of the list to show cryptocurrency on the bottom bar
-                if (cryptocurrencySearchList.lastOrNull() == it)
-                    Spacer(Modifier.height(100.dp))
+            item {
+                Spacer(Modifier.height(100.dp))
             }
         }
+
+
+    if (uiState.errorMessage.isNotEmpty())
+        ErrorDialog(
+            message = uiState.errorMessage,
+            onDismiss = { viewModel.clearErrorMessage() },
+            onRetry = { viewModel.searchCryptocurrencies() }
+        )
 }
 
 // Composable function for the search bar
 @Composable
 private fun SearchBar(
-    viewModel: SearchViewModel = hiltViewModel()
+    viewModel: SearchViewModel,
+    state: SearchUIState
 ) {
-    // This is the state that holds the current search query
-    var searchQuery by viewModel.query
-
-    // This is used to manage focus on the keyboard
     val focusManager = LocalFocusManager.current
 
     TextField(
-        value = searchQuery,
-        onValueChange = {
-            @Suppress("AssignedValueIsNeverRead") // It is used in the ViewModel
-            searchQuery = it
-        },
+        value = state.query,
+        onValueChange = { viewModel.updateQuery(it) },
         keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Search),
         keyboardActions = KeyboardActions(onSearch = {
             focusManager.clearFocus()
@@ -120,8 +127,7 @@ private fun SearchBar(
                 imageVector = Icons.Outlined.Clear,
                 contentDescription = "Clear",
                 modifier = Modifier.clickable {
-                    @Suppress("AssignedValueIsNeverRead") // It is used in the ViewModel
-                    searchQuery = ""
+                    viewModel.updateQuery("")
                 }
             )
         },
@@ -135,7 +141,7 @@ private fun SearchBar(
         modifier = Modifier
             .fillMaxWidth()
             .padding(20.dp, 9.dp, 20.dp, 0.dp)
-            .border(BorderStroke(2.dp, Color(0xFF211E41)), CircleShape),
+            .border(BorderStroke(2.dp, MaterialTheme.colorScheme.primary), CircleShape),
         textStyle = TextStyle(
             fontFamily = FontFamily(Font(R.font.poppins)),
             fontWeight = FontWeight.Bold,
@@ -146,11 +152,11 @@ private fun SearchBar(
         colors = TextFieldDefaults.colors(
             focusedIndicatorColor = Color.Transparent,
             unfocusedIndicatorColor = Color.Transparent,
-            focusedContainerColor = Color(0xFF211E41),
+            focusedContainerColor = MaterialTheme.colorScheme.primary,
             unfocusedContainerColor = MaterialTheme.colorScheme.background,
-            cursorColor = Color(0xFF000000),
+            cursorColor = Color.Black,
             focusedTextColor = Color.White,
-            unfocusedTextColor = Color(0xFFA7A7A7),
+            unfocusedTextColor = MaterialTheme.colorScheme.tertiary,
         )
     )
 }

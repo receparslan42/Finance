@@ -1,16 +1,18 @@
 package com.receparslan.finance.util
 
-import com.patrykandpatrick.vico.core.common.data.ExtraStore
+import com.patrykandpatrick.vico.compose.common.data.ExtraStore
 import com.receparslan.finance.model.KlineData
 
 // Constants object to hold constant values used in the application
 object Constants {
-    const val COINGECKO_BASE_URL = "https://api.coingecko.com/api/v3/" // Base URL for CoinGecko API
-
-    // URL for CoinGecko gainers and losers page
+    // API endpoint URLs
+    const val COINGECKO_BASE_URL = "https://api.coingecko.com/api/v3/"
     const val COINGECKO_GAINERS_LOSERS_URL = "https://www.coingecko.com/en/crypto-gainers-losers"
+    const val BINANCE_BASE_URL = "https://api.binance.com/api/v3/"
 
-    const val BINANCE_BASE_URL = "https://api.binance.com/api/v3/" // Base URL for Binance API
+    // Retry configuration for network requests
+    const val MAX_RETRY = 15
+    const val RETRY_DELAY = 2000L
 
     // Extra keys for storing additional data
     object ExtraKeys {

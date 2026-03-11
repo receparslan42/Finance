@@ -1,9 +1,8 @@
 package com.receparslan.finance.viewmodel
 
+import android.net.Uri
 import android.util.Log
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.receparslan.finance.model.Cryptocurrency
@@ -11,10 +10,13 @@ import com.receparslan.finance.model.KlineData
 import com.receparslan.finance.repository.CryptoRepository
 import com.receparslan.finance.util.Constants.TimeMillis
 import com.receparslan.finance.util.Resource
+import com.receparslan.finance.util.States.DetailUIState
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.Locale
@@ -23,104 +25,198 @@ import kotlin.math.ceil
 
 @HiltViewModel
 class DetailViewModel @Inject constructor(
-    private val cryptoRepository: CryptoRepository
+    private val cryptoRepository: CryptoRepository,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
-    // This variable holds the selected cryptocurrency details
-    var cryptocurrency: MutableState<Cryptocurrency> = mutableStateOf(
-        Cryptocurrency(
-            id = "",
-            symbol = "",
-            name = "",
-            image = "",
-            currentPrice = 0.0,
-            lastUpdated = "",
-            priceChangePercentage24h = 0.0
-        )
+    private val _uiState = MutableStateFlow(DetailUIState())
+    val uiState = _uiState.asStateFlow()
+
+    val cryptoId: String = checkNotNull(
+        Uri.decode(savedStateHandle["cryptoId"])
     )
 
-    // This variable holds the list of saved cryptocurrency IDs from the database
-    val savedCryptocurrencyIds = mutableStateListOf<String>()
-
-    // This variable holds the historical Kline data for the selected cryptocurrency
-    val klineDataHistoryList = mutableStateListOf<KlineData>()
-
-    val selectedTimePeriod = mutableStateOf("24H") // Selected time period for Kline data
-
-    var isLoading = mutableStateOf(false) // Loading state for data fetching
-
-    // Initialize the ViewModel by observing saved cryptocurrencies
     init {
+        _uiState.update { currentState ->
+            currentState.copy(
+                isLoading = true,
+            )
+        }
+
         observeSavedCryptocurrencies()
+        initCryptocurrency()
     }
 
-    // This function is used to refresh the detail screen by clearing the existing Kline data history list and fetching new data.
-    fun refreshDetailScreen() {
-        updateCryptocurrency() // Update the cryptocurrency details
-        setCryptocurrencyHistory() // Fetch the historical Kline data
+    fun updateTimePeriod(timePeriod: String) = viewModelScope.launch {
+        val currentState = _uiState.value
+
+        if (currentState.isLoading)
+            return@launch
+
+        if (currentState.cryptocurrency == null)
+            return@launch
+
+        _uiState.update { state ->
+            state.copy(
+                timePeriod = timePeriod,
+                klineDataHistory = emptyList()
+            )
+        }
+
+        val historyData: MutableList<KlineData> = getCryptocurrencyHistory(
+            symbol = currentState.cryptocurrency.symbol,
+            timePeriod = timePeriod
+        )
+
+        _uiState.update { state ->
+            state.copy(
+                klineDataHistory = historyData,
+                isRefreshing = false
+            )
+        }
     }
+
+    // This function clears the error message from the UI state.
+    fun clearErrorMessage() = _uiState.update { currentState ->
+        currentState.copy(
+            errorMessage = ""
+        )
+    }
+
+    // This function refreshes the detail screen by re-fetching the cryptocurrency data and its historical Kline data based on the current time period.
+    fun refreshDetailScreen() {
+        val currentState = _uiState.value
+
+        if (currentState.cryptocurrency == null)
+            return
+
+        _uiState.update { currentState ->
+            currentState.copy(
+                isRefreshing = true,
+                errorMessage = "",
+                cryptocurrency = null,
+                klineDataHistory = emptyList()
+            )
+        }
+
+        initCryptocurrency()
+    }
+
 
     // This function formats a decimal number according to the specified pattern.
-    fun decimalFormatter(pattern: String, number: Double): String {
-        return DecimalFormat(pattern, DecimalFormatSymbols(Locale.US))
-            .format(number)
-    }
+    fun decimalFormatter(pattern: String, number: Double): String =
+        DecimalFormat(
+            pattern, DecimalFormatSymbols(Locale.US)
+        ).format(number)
 
     // This function saves a cryptocurrency to the database.
     fun saveCryptocurrency() = viewModelScope.launch {
-        // Save the cryptocurrency to the database on a background thread
-        val resource = withContext(Dispatchers.IO) {
-            cryptoRepository.saveCryptoToDb(cryptocurrency.value)
-        }
+        val currentState = _uiState.value
 
-        // Log an error message if the save operation fails
-        if (resource is Resource.Error)
-            Log.e("DetailViewModel", resource.message)
+        if (currentState.cryptocurrency == null)
+            return@launch
+
+        when (val resource = cryptoRepository.saveCryptoToDb(currentState.cryptocurrency)) {
+            is Resource.Success ->
+                _uiState.update { state ->
+                    state.copy(
+                        isSaved = true,
+                        errorMessage = ""
+                    )
+                }
+
+            is Resource.Error ->
+                _uiState.update { state ->
+                    state.copy(
+                        errorMessage = resource.message,
+                        isSaved = false
+                    )
+                }
+        }
     }
 
     // This function deletes a cryptocurrency from the database.
     fun deleteCryptocurrency() = viewModelScope.launch {
-        // Delete the cryptocurrency from the database on a background thread
-        val resource = withContext(Dispatchers.IO) {
-            cryptoRepository.deleteCryptoFromDb(cryptocurrency.value)
-        }
+        val currentState = _uiState.value
 
-        // Log an error message if the deletion fails
-        if (resource is Resource.Error)
-            Log.e("DetailViewModel", resource.message)
+        if (currentState.cryptocurrency == null)
+            return@launch
+
+        when (val resource = cryptoRepository.deleteCryptoFromDb(currentState.cryptocurrency)) {
+            is Resource.Success ->
+                _uiState.update { state ->
+                    state.copy(
+                        isSaved = false,
+                        errorMessage = ""
+                    )
+                }
+
+            is Resource.Error ->
+                _uiState.update { state ->
+                    state.copy(
+                        errorMessage = resource.message,
+                        isSaved = true
+                    )
+                }
+        }
     }
 
-    // This function fetches the updated cryptocurrency data from the API and updates the saved cryptocurrency list.
-    fun updateCryptocurrency() = viewModelScope.launch {
-        isLoading.value = true // Set loading state to true
-
-        // Fetch the updated cryptocurrency data from the repository
-        val resource = withContext(Dispatchers.IO) {
-            cryptoRepository.getCryptoByIDs(cryptocurrency.value.id)
+    // This function initializes the cryptocurrency data and its historical Kline data based on the selected time period.
+    fun initCryptocurrency() = viewModelScope.launch {
+        val savedIds = when (val resource = cryptoRepository.getAllSavedCryptoIDsFlow().first()) {
+            is Resource.Success -> resource.data
+            else -> emptyList()
         }
 
-        // Update the cryptocurrency value based on the API response or keep the existing value in case of an error
-        cryptocurrency.value =
-            when (resource) {
-                is Resource.Success -> resource.data[0] // Update with the new data if the API call is successful
+        val resource = cryptoRepository.getCryptoByIDs(cryptoId)
 
-                // Log the error message and keep the existing data in case of an error
-                is Resource.Error -> {
-                    Log.e("DetailViewModel", resource.message)
-
-                    cryptocurrency.value
+        val cryptoData: Cryptocurrency = when (resource) {
+            is Resource.Success -> resource.data.firstOrNull() ?: run {
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        isLoading = false,
+                        isRefreshing = false,
+                        errorMessage = "Cryptocurrency not found."
+                    )
                 }
+
+                return@launch
             }
 
-        isLoading.value = false // Set loading state to false
+            is Resource.Error -> {
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        isLoading = false,
+                        isRefreshing = false,
+                        errorMessage = resource.message
+                    )
+                }
+                return@launch
+            }
+        }
+
+        val historyData: MutableList<KlineData> = getCryptocurrencyHistory(
+            symbol = cryptoData.symbol,
+            timePeriod = uiState.value.timePeriod
+        )
+
+        _uiState.update { currentState ->
+            currentState.copy(
+                isLoading = false,
+                isRefreshing = false,
+                cryptocurrency = cryptoData,
+                klineDataHistory = historyData,
+                isSaved = savedIds.contains(cryptoData.id)
+            )
+        }
     }
 
-    // This function fetches the historical Kline data for a given cryptocurrency symbol and returns the data as a list.
-    fun setCryptocurrencyHistory() {
-        // Temporary holder for Kline data history
-        val klineDataHistoryListHolder = mutableStateListOf<KlineData>()
+    private suspend fun getCryptocurrencyHistory(
+        symbol: String,
+        timePeriod: String
+    ): MutableList<KlineData> {
+        val klineDataHistoryListHolder = mutableListOf<KlineData>()
 
-        // Calculate the start time based on the selected time period
-        val startTime = when (selectedTimePeriod.value) {
+        val startTime = when (timePeriod) {
             "24H" -> System.currentTimeMillis() - TimeMillis.MILLIS_PER_DAY
             "1W" -> System.currentTimeMillis() - TimeMillis.MILLIS_PER_WEEK
             "1M" -> System.currentTimeMillis() - TimeMillis.MILLIS_PER_MONTH
@@ -130,18 +226,15 @@ class DetailViewModel @Inject constructor(
             else -> System.currentTimeMillis() - TimeMillis.MILLIS_PER_DAY
         }
 
-        // Calculate the end time (current time) rounded to the nearest second in milliseconds
         val endTime = (System.currentTimeMillis() / 1000) * 1000
 
-        // Determine the interval string based on the selected time period
-        val interval = when (selectedTimePeriod.value) {
+        val interval = when (timePeriod) {
             "24H" -> "1m"
             "1W" -> "1h"
             else -> "1d"
         }
 
-        // Determine the interval time in milliseconds based on the selected time period
-        val intervalTimeMillis = when (selectedTimePeriod.value) {
+        val intervalTimeMillis = when (timePeriod) {
             "24H" -> TimeMillis.MILLIS_PER_MINUTE
             "1W" -> TimeMillis.MILLIS_PER_HOUR
             else -> TimeMillis.MILLIS_PER_DAY
@@ -149,56 +242,61 @@ class DetailViewModel @Inject constructor(
 
         val maxPointsPerRequest = 1000L // Binance API limit for Kline data points per request
 
-        // Calculate the number of chunks needed to fetch all data within API limits
         val chunks =
-            ceil(((endTime - startTime).toDouble() / intervalTimeMillis) / maxPointsPerRequest).toInt()
+            ceil(((endTime - startTime).toDouble() / intervalTimeMillis) / maxPointsPerRequest)
+                .toInt()
 
-        viewModelScope.launch {
-            repeat(chunks) { chunkIndex ->
-                // Calculate the start and end time for the current chunk
-                val chunkStart = startTime + (chunkIndex * maxPointsPerRequest * intervalTimeMillis)
-                val chunkEnd =
-                    minOf(endTime, chunkStart + (maxPointsPerRequest * intervalTimeMillis) - 1)
+        repeat(chunks) { chunkIndex ->
+            val chunkStart = startTime + (chunkIndex * maxPointsPerRequest * intervalTimeMillis)
+            val chunkEnd =
+                minOf(endTime, chunkStart + (maxPointsPerRequest * intervalTimeMillis) - 1)
 
-                // Fetch the Kline data for the current chunk from the repository
-                val resource: Resource<List<KlineData>> = withContext(Dispatchers.IO) {
-                    cryptoRepository.getHistoricalDataByRange(
-                        symbol = cryptocurrency.value.symbol,
-                        startTime = chunkStart,
-                        endTime = chunkEnd,
-                        interval = interval,
-                    )
-                }
+            val resource: Resource<List<KlineData>> =
+                cryptoRepository.getHistoricalDataByRange(
+                    symbol = symbol,
+                    startTime = chunkStart,
+                    endTime = chunkEnd,
+                    interval = interval,
+                )
 
-                when (resource) {
-                    // Update the Kline data history list on successful data retrieval
-                    is Resource.Success -> klineDataHistoryListHolder.addAll(resource.data)
+            when (resource) {
+                is Resource.Success -> klineDataHistoryListHolder.addAll(resource.data)
 
-                    // Log the error message if fetching fails
-                    is Resource.Error -> Log.e("DetailViewModel", resource.message)
-                }
-            }
-        }.invokeOnCompletion {
-            klineDataHistoryList.clear()
-            klineDataHistoryList.addAll(klineDataHistoryListHolder)
-        }
-    }
-
-    // This function observes the saved cryptocurrencies from the database and updates the savedCryptocurrencyIds list
-    private fun observeSavedCryptocurrencies() =
-        viewModelScope.launch(Dispatchers.IO) {
-            cryptoRepository.getAllSavedCryptoIDsFlow().collect { resource ->
-                when (resource) {
-                    // Update the savedCryptocurrencyIds list on successful data retrieval
-                    is Resource.Success -> withContext(Dispatchers.Main) {
-                        savedCryptocurrencyIds.clear()
-                        savedCryptocurrencyIds.addAll(resource.data)
+                is Resource.Error -> {
+                    _uiState.update { currentState ->
+                        currentState.copy(
+                            isLoading = false,
+                            isRefreshing = false,
+                            errorMessage = resource.message
+                        )
                     }
 
-                    // Log the error message if fetching fails
+                    return@repeat
+                }
+            }
+        }
+
+        return klineDataHistoryListHolder
+    }
+
+    // This function observes the saved cryptocurrency IDs from the database and updates the UI state accordingly.
+    private fun observeSavedCryptocurrencies() =
+        viewModelScope.launch {
+            cryptoRepository.getAllSavedCryptoIDsFlow().collect { resource ->
+                when (resource) {
+                    is Resource.Success -> resource.data.let {
+                        val isSaved = it.contains(uiState.value.cryptocurrency?.id)
+
+                        _uiState.update { currentState ->
+                            currentState.copy(
+                                isSaved = isSaved
+                            )
+                        }
+                    }
+
                     is Resource.Error -> Log.e(
-                        "Error",
-                        resource.message
+                        "DetailViewModel",
+                        "Error observing saved cryptocurrencies: ${resource.message}"
                     )
                 }
             }

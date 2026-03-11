@@ -1,15 +1,15 @@
 package com.receparslan.finance.viewmodel
 
-import android.util.Log
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.receparslan.finance.model.Cryptocurrency
 import com.receparslan.finance.repository.CryptoRepository
 import com.receparslan.finance.util.Resource
+import com.receparslan.finance.util.States.FavouriteUIState
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -18,46 +18,75 @@ class FavouritesViewModel
 @Inject constructor(
     private val cryptoRepository: CryptoRepository
 ) : ViewModel() {
+    private val _uiState = MutableStateFlow(FavouriteUIState())
+    val uiState = _uiState.asStateFlow()
 
-    // This variable holds the list of saved cryptocurrencies
-    val savedCryptocurrencyList = mutableStateListOf<Cryptocurrency>()
-
-    var isLoading = mutableStateOf(false) // Loading state to show/hide loading indicators
-
-    // Set the saved cryptocurrencies when the ViewModel is initialized
+    // This state is used to manage the UI state of the favourites screen when observing the saved cryptocurrencies.
     init {
+        _uiState.update { currentState ->
+            currentState.copy(
+                isLoading = true,
+            )
+        }
+
+        viewModelScope.launch {
+            when (val resource = cryptoRepository.observeSavedCryptocurrencies().first()) {
+                is Resource.Success ->
+                    _uiState.update { currentState ->
+                        currentState.copy(
+                            isLoading = false,
+                            errorMessage = "",
+                            savedCryptocurrencies = resource.data
+                        )
+                    }
+
+                is Resource.Error ->
+                    _uiState.update { currentState ->
+                        currentState.copy(
+                            isLoading = false,
+                            errorMessage = resource.message
+                        )
+                    }
+            }
+        }
+
         observeSavedCryptocurrencies()
     }
 
-    // This function observes the saved cryptocurrencies from the repository and updates the savedCryptocurrencyList
-    private fun observeSavedCryptocurrencies() = viewModelScope.launch(Dispatchers.IO) {
-        cryptoRepository.getAllSavedCryptoIDsFlow().collect { idsResource ->
-            when (idsResource) {
-                is Resource.Success -> {
-                    // If there are saved IDs, fetch the corresponding cryptocurrency details
-                    if (idsResource.data.isNotEmpty()) {
-                        // Join the list of IDs into a comma-separated string for the API request
-                        val ids = idsResource.data.joinToString(",")
+    // This function is used to refresh the favourites screen by re-observing the saved cryptocurrencies.
+    fun refreshFavouritesScreen() = observeSavedCryptocurrencies()
 
-                        when (val savedCryptosResource = cryptoRepository.getCryptoByIDs(ids)) {
-                            is Resource.Success -> {
-                                savedCryptocurrencyList.clear()
-                                savedCryptocurrencyList.addAll(savedCryptosResource.data)
-                            }
+    // This function is used to clear the error message from the UI state when the user dismisses the error dialog.
+    fun clearErrorMessage() {
+        _uiState.update { currentState ->
+            currentState.copy(
+                errorMessage = ""
+            )
+        }
+    }
 
-                            is Resource.Error -> Log.e(
-                                "FavouritesViewModel",
-                                savedCryptosResource.message
+    // This function is used to refresh the favourites screen by re-observing the saved cryptocurrencies.
+    private fun observeSavedCryptocurrencies() = viewModelScope.launch {
+        cryptoRepository.observeSavedCryptocurrencies()
+            .collect { resource ->
+                when (resource) {
+                    is Resource.Success ->
+                        _uiState.update { currentState ->
+                            currentState.copy(
+                                isLoading = false,
+                                errorMessage = "",
+                                savedCryptocurrencies = resource.data
                             )
                         }
-                    } else {
-                        // If there are no saved IDs, clear the list
-                        savedCryptocurrencyList.clear()
-                    }
-                }
 
-                is Resource.Error -> Log.e("FavouritesViewModel", idsResource.message)
+                    is Resource.Error ->
+                        _uiState.update { currentState ->
+                            currentState.copy(
+                                isLoading = false,
+                                errorMessage = resource.message
+                            )
+                        }
+                }
             }
-        }
     }
 }
