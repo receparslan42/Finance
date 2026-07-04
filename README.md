@@ -1,9 +1,35 @@
 # Finance (Cryptocurrency Tracker Android App)
 
+![Kotlin](https://img.shields.io/badge/Kotlin-2.3.10-7F52FF?logo=kotlin&logoColor=white)
+![Android](https://img.shields.io/badge/Android-MinSDK%2026-3DDC84?logo=android&logoColor=white)
+![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4)
+![Clean Architecture](https://img.shields.io/badge/Architecture-Clean-blue)
+![MVVM](https://img.shields.io/badge/Pattern-MVVM-orange)
+![Hilt](https://img.shields.io/badge/DI-Hilt-4285F4)
+![Room](https://img.shields.io/badge/Database-Room-3DDC84)
+![Retrofit](https://img.shields.io/badge/API-Retrofit-red)
+
 A modern Android app for tracking cryptocurrency markets built with Jetpack Compose and Material 3.
 It fetches live market data, top gainers/losers (via web scraping), and historical price charts, lets
 you search coins, and save favourites locally with Room. Dependency injection is handled by Hilt and
 charts are rendered with Vico.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Screenshots](#screenshots)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+- [Architecture](#architecture)
+- [Project Structure](#project-structure)
+- [Learning Goals](#learning-goals)
+- [Known Limitations](#known-limitations)
+- [Future Improvements](#future-improvements)
+- [Contact](#contact)
+- [Disclaimer](#disclaimer)
+- [Acknowledgements](#acknowledgements)
+- [License](#license)
 
 ## Overview
 
@@ -34,202 +60,213 @@ charts are rendered with Vico.
 
 ## Screenshots
 
-| Home Page                                                            | Gainers                                                              | Losers                                                             |
-|----------------------------------------------------------------------|----------------------------------------------------------------------|--------------------------------------------------------------------|
-| <img src="screenshoots/home_screen.jpg" alt="Home Page" width="250"> | <img src="screenshoots/gainer_screen.jpg" alt="Gainers" width="250"> | <img src="screenshoots/loser_screen.jpg" alt="Losers" width="250"> |
+| Home Page                                                           | Gainers                                                             | Losers                                                            |
+|---------------------------------------------------------------------|---------------------------------------------------------------------|-------------------------------------------------------------------|
+| <img src="screenshots/home_screen.jpg" alt="Home Page" width="250"> | <img src="screenshots/gainer_screen.jpg" alt="Gainers" width="250"> | <img src="screenshots/loser_screen.jpg" alt="Losers" width="250"> |
 
-| Search                                                              | Favourites                                                                  |
-|---------------------------------------------------------------------|-----------------------------------------------------------------------------|
-| <img src="screenshoots/search_screen.jpg" alt="Search" width="250"> | <img src="screenshoots/favourites_screen.jpg" alt="Favourites" width="250"> |
+| Search                                                             | Favourites                                                                 |
+|--------------------------------------------------------------------|----------------------------------------------------------------------------|
+| <img src="screenshots/search_screen.jpg" alt="Search" width="250"> | <img src="screenshots/favourites_screen.jpg" alt="Favourites" width="250"> |
 
-| Detail                                                                | Detail                                                                  | Detail                                                                  |
-|-----------------------------------------------------------------------|-------------------------------------------------------------------------|-------------------------------------------------------------------------|
-| <img src="screenshoots/detail_screen.jpg" alt="Detail 1" width="250"> | <img src="screenshoots/detail_screen_2.jpg" alt="Detail 2" width="250"> | <img src="screenshoots/detail_screen_3.jpg" alt="Detail 3" width="250"> |
+| Detail                                                               | Detail                                                                 | Detail                                                                 |
+|----------------------------------------------------------------------|------------------------------------------------------------------------|------------------------------------------------------------------------|
+| <img src="screenshots/detail_screen.jpg" alt="Detail 1" width="250"> | <img src="screenshots/detail_screen_2.jpg" alt="Detail 2" width="250"> | <img src="screenshots/detail_screen_3.jpg" alt="Detail 3" width="250"> |
 
 ## Tech Stack
 
-| Category | Library | Version |
-|---|---|---|
-| UI | Jetpack Compose + Material 3 | BOM 2026.02.01 |
-| Navigation | Navigation Compose | 2.9.7 |
-| Icons | Material Icons Extended | 1.7.8 |
-| DI | Hilt | 2.59.2 |
-| DI (Compose) | Hilt Navigation Compose | 1.3.0 |
-| Networking | Retrofit | 3.0.0 |
-| HTTP Client | OkHttp + Logging Interceptor | 5.3.2 |
-| JSON | Gson (Retrofit Converter) | 3.0.0 |
-| Web Scraping | JSoup | 1.22.1 |
-| Database | Room (Runtime + KTX + Compiler) | 2.8.4 |
-| Images | Coil Compose | 2.7.0 |
-| Charts | Vico Compose | 3.0.2 |
-| Lifecycle | Lifecycle Runtime KTX | 2.10.0 |
-| Activity | Activity Compose | 1.12.4 |
-| Core | AndroidX Core KTX | 1.17.0 |
+| Category     | Library                         | Version        |
+|--------------|---------------------------------|----------------|
+| Architecture | Clean Architecture + MVVM       | -              |
+| Concurrency  | Kotlin Coroutines + Flow        | -              |
+| Reactive UI  | StateFlow                       | -              |
+| UI           | Jetpack Compose + Material 3    | BOM 2026.02.01 |
+| Navigation   | Navigation Compose              | 2.9.7          |
+| Icons        | Material Icons Extended         | 1.7.8          |
+| DI           | Hilt                            | 2.59.2         |
+| DI (Compose) | Hilt Navigation Compose         | 1.3.0          |
+| Networking   | Retrofit                        | 3.0.0          |
+| HTTP Client  | OkHttp + Logging Interceptor    | 5.3.2          |
+| JSON         | Gson (Retrofit Converter)       | 3.0.0          |
+| Web Scraping | JSoup                           | 1.22.1         |
+| Database     | Room (Runtime + KTX + Compiler) | 2.8.4          |
+| Images       | Coil Compose                    | 2.7.0          |
+| Charts       | Vico Compose                    | 3.0.2          |
+| Lifecycle    | Lifecycle Runtime KTX           | 2.10.0         |
+| Activity     | Activity Compose                | 1.12.4         |
+| Core         | AndroidX Core KTX               | 1.17.0         |
 
-## Architecture (MVVM)
+## Getting Started
 
-This project follows a clean **Model–View–ViewModel** architecture with a **Repository** pattern
-and **Hilt** dependency injection:
+### Prerequisites
 
-```
-UI (Compose Screens)
-    ↓ observes StateFlow
-ViewModel (business logic + UI state)
-    ↓ calls
-Repository (interface → implementation)
-    ↓ delegates to
-Service Layer (Retrofit APIs + JSoup Scraper) / Room Database
+- Android Studio (latest stable release recommended)
+- JDK 21
+- Android SDK with API level 36 installed
+- A device or emulator running Android 8.0 (API 26) or higher
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/receparslan42/Finance.git
+   cd Finance
+   ```
+2. Open the project in Android Studio.
+3. Let Gradle sync and download the required dependencies.
+4. Run the app on an emulator or a physical device via **Run ▶**.
+
+## Architecture
+
+This project follows **Clean Architecture** principles combined with **MVVM**, the **Repository Pattern**, and a **UseCase** layer. The Domain layer is kept as pure Kotlin, fully independent of Retrofit, Room, and UI frameworks, which keeps business logic testable, maintainable, and easy to reason about as the app grows.
+
+### Architecture Flow
+
+```mermaid
+flowchart TD
+
+A[Presentation Layer<br/>Compose + ViewModels]
+
+B[UseCases]
+
+C[Repository Interface]
+
+D[Repository Implementation]
+
+E[RemoteDataSource]
+
+F[LocalDataSource]
+
+G[(Retrofit APIs)]
+
+H[(Room Database)]
+
+A --> B
+B --> C
+C --> D
+D --> E
+D --> F
+E --> G
+F --> H
 ```
 
 ### Layers
 
-- **Model**: Data classes (`Cryptocurrency`, `CryptocurrencyList`, `KlineData`) and persistence
-  layer (Room entity + `CryptocurrencyDao` + `CryptocurrencyDatabase`).
-- **View**: Jetpack Compose screens in `ui/screens/` plus `MainActivity` which hosts the `NavHost`
-  and bottom navigation bar. Composables render immutable state and emit user intents.
-- **ViewModel**: One per screen (`HomeViewModel`, `DetailViewModel`, `SearchViewModel`,
-  `FavouritesViewModel`, `GainerAndLoserViewModel`). Each exposes a `StateFlow` of a dedicated UI
-  state data class and encapsulates business logic.
-- **Repository**: `CryptoRepository` interface with `CryptoRepositoryImpl` implementation. Abstracts
-  all data sources (CoinGecko API, Binance API, CoinGecko scraper, Room DB) behind a single
-  contract.
-- **Service / Data Source**: Separate Retrofit interfaces (`CoinGeckoApiService`, `BinanceApiService`)
-  and a `CoinGeckoScraper` (JSoup). Injected via Hilt `@Named` qualifiers for distinct base URLs.
-- **DI**: `AppModule` provides Retrofit instances, OkHttp client, Room database, and DAO.
-  `RepositoryModule` binds the repository interface to its implementation.
+- **Presentation Layer** — Jetpack Compose UI and ViewModels. ViewModels talk **only** to UseCases and observe `StateFlow` for UI updates.
+- **Domain Layer** — pure Kotlin, no Android framework dependencies:
+  - **Models** — domain-specific data structures.
+  - **UseCases** — fine-grained business logic classes.
+  - **Repository Interfaces** — contracts for data operations.
+- **Data Layer** — responsible for data procurement:
+  - **Repository Implementation** — coordinates `RemoteDataSource` and `LocalDataSource` as the single source of truth.
+  - **DataSources** — encapsulate Retrofit (remote) and Room (local) logic.
+  - **DTOs / Entities** — network- and database-specific models, never exposed outside the Data layer.
+  - **Mappers** — extension functions that convert DTOs/Entities into Domain models.
 
-### State Management
-
-Each screen has a dedicated UI state data class (e.g., `HomeUIState`, `DetailUIState`,
-`SearchUIState`, `FavouriteUIState`, `GainerAndLoserUIState`) defined in `util/States.kt`. State is
-exposed via `StateFlow` and collected by Composables.
-
-### Error Handling & Retry
-
-- `Resource<T>` sealed class (`Success` / `Error`) wraps all network responses.
-- Automatic retry logic with configurable max retries (15) and delay (2 seconds) in the repository.
-- User-facing `ErrorDialog` composable surfaces errors with a retry action.
-
-## API Details
-
-Two public APIs and a web scraper are used:
-
-### 1. CoinGecko API (Base: `https://api.coingecko.com/api/v3/`)
-
-- `GET coins/markets?vs_currency=usd&per_page=250&page={n}` — paginated market data (id, symbol,
-  name, image, current price, 24h change, last updated).
-- `GET search?query={text}` — search coins by name; response wrapped in `CryptocurrencyList`.
-- `GET coins/markets?ids={id1,id2,...}` — fetch specific coins by IDs (used for favourites).
-- Rate Limits: Public free tier ~30–50 calls/min per IP. Excess requests may yield 429 responses;
-  the repository handles retry with backoff.
-
-### 2. Binance API (Base: `https://api.binance.com/api/v3/`)
-
-- `GET klines?symbol={SYMBOL}USDT&startTime={ms}&endTime={ms}&interval={code}&limit=1000` —
-  historical OHLCV data for charts. Raw array responses are deserialized via a custom
-  `KlineDataDeserializer` into `KlineData` objects.
-- Supported intervals: `1m`, `5m`, `15m`, `1h`, `4h`, `1d`, etc.
-- Weight-based rate limits; current single-user usage is well within limits.
-
-### 3. CoinGecko Web Scraping (JSoup)
-
-- `CoinGeckoScraper` scrapes `https://www.coingecko.com/en/crypto-gainers-losers` for top
-  gainers and losers data (name, symbol, image, price, 24h change percentage).
-
-### Security & Privacy
-
-- No secrets or user PII stored; favourites persist locally only.
-- All requests are HTTPS.
-- Network permissions: `INTERNET` and `ACCESS_NETWORK_STATE` declared in `AndroidManifest.xml`.
-
-## Requirements
-
-- Android Studio Ladybug or newer
-- Android Gradle Plugin 9.1+
-- JDK 21 (project is configured for Java/Kotlin 21 toolchain)
-- Internet connection (uses public CoinGecko and Binance endpoints; no API keys required)
-
-## Getting Started
-
-### Open in Android Studio
-
-1. Clone the repo
-2. File → Open → select the project root
-3. Let Gradle sync finish
-4. Run the `app` configuration on a device/emulator (Android 8.0+, API 26+)
-
-### Build from terminal (Windows PowerShell)
-
-```powershell
-# From project root
-./gradlew.bat clean
-./gradlew.bat :app:assembleDebug
-```
-
-APK output: `app/build/outputs/apk/debug/`.
+**Dependency rule:** Presentation depends only on UseCases, and UseCases depend only on Repository interfaces. Combined with explicit DTO/Entity/Domain separation, this is what keeps the codebase's layers loosely coupled and independently testable.
 
 ## Project Structure
 
+The project is organized into `core` and `feature` packages to support scalability:
+
 ```
 com.receparslan.finance/
-├── MainActivity.kt                     # Compose scaffold + bottom nav + NavHost
-├── database/
-│   ├── CryptocurrencyDatabase.kt       # Room database definition
-│   └── CryptocurrencyDao.kt            # DAO for favourites CRUD
-├── hilt/
-│   ├── AppModule.kt                    # DI: Retrofit, OkHttp, Room providers
-│   ├── RepositoryModule.kt             # DI: Repository binding
-│   └── FinanceApplication.kt           # @HiltAndroidApp entry point
-├── model/
-│   └── Cryptocurrency.kt               # Data models (Cryptocurrency, KlineData)
-├── repository/
-│   ├── CryptoRepository.kt             # Repository interface
-│   └── CryptoRepositoryImpl.kt         # Implementation with retry logic
-├── service/
-│   ├── CoinGeckoApiService.kt          # Retrofit interface (markets, search)
-│   ├── BinanceApiService.kt            # Retrofit interface (klines)
-│   └── CoinGeckoScraper.kt             # JSoup web scraper (gainers/losers)
-├── ui/
-│   ├── NavigationItem.kt               # Navigation items + sealed Screen class
-│   ├── screens/
-│   │   ├── HomeScreen.kt               # Paginated market list
-│   │   ├── GainerScreen.kt             # Top gainers grid
-│   │   ├── LoserScreen.kt              # Top losers grid
-│   │   ├── SearchScreen.kt             # Coin search
-│   │   ├── FavouritesScreen.kt         # Saved coins grid
-│   │   └── DetailScreen.kt             # Coin detail with chart
-│   ├── components/
-│   │   ├── CryptocurrencyRow.kt        # List row item
-│   │   ├── GridItem.kt                 # Grid cell item
-│   │   ├── CenterHeaderText.kt         # Centered header
-│   │   ├── ScreenHolder.kt             # Loading/empty state wrapper
-│   │   └── ErrorDialog.kt              # Error dialog with retry
-│   ├── charts/
-│   │   └── LineChart.kt                # Vico line chart wrapper
-│   ├── markers/
-│   │   └── Marker.kt                   # Custom chart markers
-│   └── theme/
-│       ├── Theme.kt                    # Material 3 light/dark theme
-│       ├── Color.kt                    # Color palette
-│       └── Type.kt                     # Poppins typography
-├── util/
-│   ├── Constants.kt                    # API URLs, retry config, time constants
-│   ├── Extension.kt                    # LazyListState extensions
-│   ├── Resource.kt                     # Sealed class (Success/Error)
-│   ├── States.kt                       # UI state data classes
-│   └── KlineDataDeserializer.kt        # Custom Gson deserializer for klines
-└── viewmodel/
-    ├── HomeViewModel.kt                # Pagination, market data
-    ├── DetailViewModel.kt              # Details, chart data, favourites
-    ├── SearchViewModel.kt              # Search query handling
-    ├── FavouritesViewModel.kt          # Saved coins observation
-    └── GainerAndLoserViewModel.kt      # Gainers/losers fetching
+├── core/
+│   ├── common/                 # Resource wrappers, Constants, Extensions, Utilities
+│   ├── data/
+│   │   ├── local/              # Room Database, DAO, Entities, LocalDataSource
+│   │   ├── remote/             # Retrofit APIs, DTOs, RemoteDataSource
+│   │   ├── mapper/             # DTO ↔ Domain ↔ Entity mappers
+│   │   └── repository/         # Repository implementations
+│   ├── domain/
+│   │   ├── model/              # Shared domain models
+│   │   └── repository/         # Repository interfaces
+│   ├── navigation/             # Navigation graph and destinations
+│   └── ui/                     # Shared UI components, Theme, Charts
+│
+└── feature/
+    ├── home/
+    │   ├── domain/             # Home-specific UseCases
+    │   └── presentation/       # Home screen, ViewModel, UI state
+    │
+    ├── detail/
+    │   ├── data/               # Detail DTOs and mappers
+    │   ├── domain/             # Detail models and UseCases
+    │   └── presentation/       # Detail screen, ViewModel, chart UI
+    │
+    ├── search/
+    │   ├── data/               # Search DTOs and mappers
+    │   ├── domain/             # Search UseCases
+    │   └── presentation/       # Search screen and ViewModel
+    │
+    ├── favourites/
+    │   ├── domain/             # Favourite-related UseCases
+    │   └── presentation/       # Favourites screen and ViewModel
+    │
+    └── gainloss/
+        ├── data/               # Gainers/Losers DTOs and mappers
+        ├── domain/             # Gainers/Losers models and UseCases
+        └── presentation/       # Gainers/Losers screens and ViewModels
 ```
 
-## Notes
+Each feature is further divided into `data`, `domain`, and `presentation` layers where appropriate (e.g., feature-specific UseCases).
 
-- Public market data is subject to rate limits and availability.
-- This project is for educational/demo purposes only; not financial advice.
+## Learning Goals
+
+This project was primarily built to deepen my understanding of modern Android application architecture rather than to create a production-ready finance application.
+
+During development, I focused on implementing and understanding:
+
+- Clean Architecture
+- MVVM
+- Repository Pattern
+- UseCases
+- DTO / Entity / Domain model separation
+- Mapper Layer
+- RemoteDataSource
+- LocalDataSource
+- Dependency Injection with Hilt
+- Kotlin Coroutines
+- Flow & StateFlow
+- Jetpack Compose
+- Material 3 Design
+
+## Known Limitations
+
+- **Top Gainers / Top Losers rely on web scraping.** These screens parse CoinGecko's HTML with JSoup instead of calling a dedicated API endpoint, so a layout change on CoinGecko's side can break this feature until the scraping logic is updated.
+- **Public market data is subject to rate limits and availability.** Frequent or heavy use may hit provider rate limits, resulting in failed requests or stale data.
+- No offline-first support yet — most screens require a network connection on first load.
+
+## Future Improvements
+
+Some improvements that could be implemented in future versions include:
+
+- Offline-first synchronization strategy
+- Paging 3 integration
+- Unit and UI testing
+- CI/CD pipeline
+- Better caching strategy
+- A more resilient data source for Top Gainers/Losers (a stable API instead of scraping, if one becomes available)
+
+## Contact
+
+**Recep Arslan**
+
+- GitHub: [@receparslan42](https://github.com/receparslan42)
+- LinkedIn: https://www.linkedin.com/in/recep-arslan-2a3037246
+- Email: receparslan965&#64;gmail&#46;com
+
+## Disclaimer
+
+This application is intended for educational purposes and portfolio demonstration. It should not be considered financial advice or used for investment decisions.
+
+## Acknowledgements
+
+This project uses public cryptocurrency data provided by:
+
+- CoinGecko API
+- Binance API
+
+Charts are built using the Vico chart library.
 
 ## License
 

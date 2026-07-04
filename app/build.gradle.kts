@@ -9,12 +9,12 @@ plugins {
 
 android {
     namespace = "com.receparslan.finance"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.receparslan.finance"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
 
@@ -109,4 +109,5 @@ dependencies {
     implementation(libs.androidx.hilt.navigation.fragment)
     implementation(libs.androidx.hilt.navigation.compose)
     ksp(libs.hilt.android.compiler)
+    ksp(libs.kotlin.metadata.jvm)
 }

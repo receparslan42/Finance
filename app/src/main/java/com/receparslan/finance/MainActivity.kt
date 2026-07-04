@@ -35,15 +35,15 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.createGraph
 import androidx.navigation.navArgument
-import com.receparslan.finance.ui.Screen
-import com.receparslan.finance.ui.navigationItems
-import com.receparslan.finance.ui.screens.DetailScreen
-import com.receparslan.finance.ui.screens.FavouritesScreen
-import com.receparslan.finance.ui.screens.GainerScreen
-import com.receparslan.finance.ui.screens.HomeScreen
-import com.receparslan.finance.ui.screens.LoserScreen
-import com.receparslan.finance.ui.screens.SearchScreen
-import com.receparslan.finance.ui.theme.FinanceTheme
+import com.receparslan.finance.core.navigation.Screen
+import com.receparslan.finance.core.navigation.navigationItems
+import com.receparslan.finance.feature.detail.presentation.screen.DetailScreen
+import com.receparslan.finance.feature.gainloss.presentation.screen.GainerScreen
+import com.receparslan.finance.feature.home.presentation.screen.HomeScreen
+import com.receparslan.finance.feature.gainloss.presentation.screen.LoserScreen
+import com.receparslan.finance.feature.search.presentation.screen.SearchScreen
+import com.receparslan.finance.core.ui.theme.FinanceTheme
+import com.receparslan.finance.feature.favourites.presentation.screen.FavouritesScreen
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
